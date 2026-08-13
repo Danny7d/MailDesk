@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MailDesk
 
-## Getting Started
+A no-code email sending SaaS that allows users to send transactional emails through their Resend account without writing code.
 
-First, run the development server:
+## Features
 
+- Connect your Resend API key securely
+- Compose and send emails from verified domains
+- View email sending history
+- AES-256-GCM encryption for API keys
+- User isolation and authentication
+
+## Tech Stack
+
+- **Frontend:** Next.js 16, TypeScript, Tailwind CSS
+- **Backend:** Next.js API Routes
+- **Database:** Supabase (PostgreSQL) with Prisma ORM
+- **Auth:** NextAuth.js v5
+- **Email:** Resend API
+- **Validation:** Zod
+
+## Quick Start
+
+1. **Install dependencies:**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Set up environment variables:**
+```bash
+cp .env.example .env
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Edit `.env` with your values:
+```env
+DATABASE_URL="postgresql://postgres:password@project-ref.supabase.co:5432/postgres"
+AUTH_SECRET="your-auth-secret"
+ENCRYPTION_KEY="your-encryption-key"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Generate secrets:
+```bash
+openssl rand -base64 32  # For AUTH_SECRET
+openssl rand -base64 32  # For ENCRYPTION_KEY
+```
 
-## Learn More
+3. **Run database migrations:**
+```bash
+npx prisma migrate dev
+npx prisma generate
+```
 
-To learn more about Next.js, take a look at the following resources:
+4. **Start development server:**
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Open [http://localhost:3000](http://localhost:3000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Production
 
-## Deploy on Vercel
+```bash
+npm run build
+npm start
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Important:** Use a managed PostgreSQL service (Supabase, Neon, RDS) and set all environment variables in production.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Security
+
+- API keys encrypted with AES-256-GCM at rest
+- Never exposed to client or logs
+- User-scoped database queries
+- Rate limiting (10 emails/minute per user)
+
+## License
+
+MIT
