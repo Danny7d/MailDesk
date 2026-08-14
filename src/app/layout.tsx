@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MailDesk - Send emails without writing code",
   description: "Connect your Resend account and send transactional emails from a simple, Gmail-like dashboard.",
+  icons: {
+    icon: "/maildesk-favicon.svg",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

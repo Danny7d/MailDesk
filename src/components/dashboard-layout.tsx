@@ -3,6 +3,7 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -33,7 +34,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              <Image src="/maildesk-icon.svg" alt="MailDesk" width={32} height={32} />
               <h1 className="text-xl font-bold text-gray-900">MailDesk</h1>
             </div>
             <div className="flex items-center">

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -7,7 +8,8 @@ export default function Home() {
       <nav className="border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
+              <Image src="/maildesk-icon.svg" alt="MailDesk" width={32} height={32} />
               <h1 className="text-xl font-bold text-gray-900">MailDesk</h1>
             </div>
             <div className="flex items-center space-x-4">

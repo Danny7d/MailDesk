@@ -1,0 +1,7 @@
+<svg width="620" height="180" viewBox="0 0 620 180" xmlns="http://www.w3.org/2000/svg" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+  <g transform="translate(0,54)">
+    <rect width="72" height="72" rx="17" fill="#6366F1"/>
+    <path d="M 19 54 L 19 21 L 36 39 L 53 21 L 53 54" fill="none" stroke="#FFFFFF" stroke-width="6.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="92" y="55" font-size="42" font-weight="700" fill="#FFFFFF" letter-spacing="-1">Mail<tspan fill="#818CF8">Desk</tspan></text>
+  </g>
+</svg>
