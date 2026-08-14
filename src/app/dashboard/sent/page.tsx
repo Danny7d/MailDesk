@@ -9,11 +9,15 @@ export default async function SentPage() {
     return null;
   }
 
+  console.log('Session user ID:', session.user.id);
+
   // Get all emails for the user
   const emails = await prisma.email.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
   });
+
+  console.log('Emails found:', emails.length);
 
   return (
     <div>
