@@ -8,9 +8,13 @@ export default function ProductShowcase() {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'success'>('idle');
+  const [senderPrefix, setSenderPrefix] = useState('info');
+  const [selectedDomain, setSelectedDomain] = useState('example.com');
+
+  const sender = `${senderPrefix}@${selectedDomain}`;
 
   const handleSend = () => {
-    if (!to || !subject || !message) return;
+    if (!sender || !to || !subject || !message) return;
     setStatus('sending');
     
     // Simulate sending delay
@@ -100,6 +104,34 @@ export default function ProductShowcase() {
                     <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
                       <div className="border-b border-gray-200 pb-4">
                         <h3 className="text-lg font-semibold text-gray-900">Compose Email</h3>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">From</label>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={senderPrefix}
+                            onChange={(e) => setSenderPrefix(e.target.value)}
+                            placeholder="info"
+                            disabled={status !== 'idle'}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <span className="flex items-center text-gray-500">@</span>
+                          <select
+                            value={selectedDomain}
+                            onChange={(e) => setSelectedDomain(e.target.value)}
+                            disabled={status !== 'idle'}
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="example.com">example.com</option>
+                            <option value="yourdomain.com">yourdomain.com</option>
+                          </select>
+                        </div>
+                        {sender && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Email will be sent from: <strong>{sender}</strong>
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
