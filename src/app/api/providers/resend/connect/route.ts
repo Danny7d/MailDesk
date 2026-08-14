@@ -42,6 +42,14 @@ export async function POST(request: Request) {
     // Get sender identities
     const senderIdentities = await getSenderIdentities(apiKey);
 
+    // Check if there are any domains
+    if (senderIdentities.length === 0) {
+      return NextResponse.json(
+        { error: 'No verified domains found in your Resend account. Please add and verify a domain in Resend before connecting.' },
+        { status: 400 }
+      );
+    }
+
     // Encrypt the API key
     const encryptedKey = encrypt(apiKey, encryptionSecret!);
 

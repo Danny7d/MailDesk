@@ -2,7 +2,6 @@ import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import Problem from '@/components/landing/Problem';
 import ProductShowcase from '@/components/landing/ProductShowcase';
-import InteractiveDemo from '@/components/landing/InteractiveDemo';
 import FeatureBento from '@/components/landing/FeatureBento';
 import Infrastructure from '@/components/landing/Infrastructure';
 import HowItWorks from '@/components/landing/HowItWorks';
@@ -18,7 +17,6 @@ export default function Home() {
       <Hero />
       <Problem />
       <ProductShowcase />
-      <InteractiveDemo />
       <FeatureBento />
       <Infrastructure />
       <HowItWorks />
