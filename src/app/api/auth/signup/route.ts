@@ -58,6 +58,8 @@ export async function POST(request: Request) {
     }
 
     console.error('Signup error:', error);
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
       { error: 'Failed to create account' },
       { status: 500 }
