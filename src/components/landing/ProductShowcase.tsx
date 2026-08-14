@@ -1,35 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function ProductShowcase() {
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
-  const [message, setMessage] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'success'>('idle');
-  const [senderPrefix, setSenderPrefix] = useState('info');
-  const [selectedDomain, setSelectedDomain] = useState('example.com');
-
-  const sender = `${senderPrefix}@${selectedDomain}`;
-
-  const handleSend = () => {
-    if (!sender || !to || !subject || !message) return;
-    setStatus('sending');
-    
-    // Simulate sending delay
-    setTimeout(() => {
-      setStatus('success');
-    }, 2000);
-  };
-
-  const handleReset = () => {
-    setTo('');
-    setSubject('');
-    setMessage('');
-    setStatus('idle');
-  };
-
   const features = [
     {
       id: 'compose',
@@ -113,120 +86,56 @@ export default function ProductShowcase() {
                         <div className="flex gap-2">
                           <input
                             type="text"
-                            value={senderPrefix}
-                            onChange={(e) => setSenderPrefix(e.target.value)}
-                            placeholder="info"
-                            disabled={status !== 'idle'}
-                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 backdrop-blur-sm"
+                            value="info"
+                            disabled
+                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm opacity-50"
                           />
                           <span className="flex items-center text-white/40">@</span>
                           <select
-                            value={selectedDomain}
-                            onChange={(e) => setSelectedDomain(e.target.value)}
-                            disabled={status !== 'idle'}
-                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 backdrop-blur-sm"
+                            value="example.com"
+                            disabled
+                            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm opacity-50"
                           >
                             <option value="example.com">example.com</option>
-                            <option value="yourdomain.com">yourdomain.com</option>
                           </select>
                         </div>
-                        {sender && (
-                          <p className="text-xs text-white/40 mt-2">
-                            Email will be sent from: <strong className="text-white/60">{sender}</strong>
-                          </p>
-                        )}
+                        <p className="text-xs text-white/40 mt-2">
+                          Email will be sent from: <span className="font-mono text-white/60">info@example.com</span>
+                        </p>
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-3">To</label>
                         <input
                           type="email"
-                          value={to}
-                          onChange={(e) => setTo(e.target.value)}
-                          placeholder="customer@example.com"
-                          disabled={status !== 'idle'}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 backdrop-blur-sm"
+                          value="customer@example.com"
+                          disabled
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm opacity-50"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-3">Subject</label>
                         <input
                           type="text"
-                          value={subject}
-                          onChange={(e) => setSubject(e.target.value)}
-                          placeholder="Welcome to MailDesk"
-                          disabled={status !== 'idle'}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 backdrop-blur-sm"
+                          value="Welcome to MailDesk"
+                          disabled
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm opacity-50"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-white/70 mb-3">Message</label>
                         <textarea
-                          value={message}
-                          onChange={(e) => setMessage(e.target.value)}
-                          placeholder="Thank you for signing up..."
+                          value="Thank you for signing up..."
                           rows={3}
-                          disabled={status !== 'idle'}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm resize-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 backdrop-blur-sm"
+                          disabled
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white text-sm resize-none opacity-50"
                         />
                       </div>
-                      <AnimatePresence mode="wait">
-                        {status === 'idle' && (
-                          <motion.button
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={handleSend}
-                            disabled={!to || !subject || !message}
-                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 shadow-lg shadow-purple-500/20"
-                          >
-                            Send Email
-                          </motion.button>
-                        )}
-                        {status === 'sending' && (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="w-full bg-white/10 border border-white/10 text-white px-5 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-3 backdrop-blur-sm"
-                          >
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                            </motion.div>
-                            Sending...
-                          </motion.div>
-                        )}
-                        {status === 'success' && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="w-full bg-green-500/20 border border-green-500/30 text-green-400 px-5 py-3 rounded-xl text-sm font-medium flex items-center justify-center gap-3 backdrop-blur-sm"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                            Email sent successfully
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                      {status === 'success' && (
-                        <motion.button
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          onClick={handleReset}
-                          className="w-full bg-white/5 hover:bg-white/10 text-white px-5 py-3 rounded-xl text-sm font-medium transition-colors border border-white/10 backdrop-blur-sm"
-                        >
-                          Send another
-                        </motion.button>
-                      )}
-                      <p className="text-xs text-white/30 text-center">
-                        This is a marketing demo. No email will actually be sent.
-                      </p>
+                      <button
+                        disabled
+                        className="w-full bg-gradient-to-r from-purple-600/50 to-blue-600/50 text-white/50 px-5 py-3 rounded-xl text-sm font-semibold border border-white/10 cursor-not-allowed"
+                      >
+                        Send Email
+                      </button>
                     </div>
                   )}
                   {feature.id === 'sender' && (
