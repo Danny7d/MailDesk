@@ -1,9 +1,13 @@
 import Navbar from '@/components/landing/Navbar';
 import Hero from '@/components/landing/Hero';
 import Problem from '@/components/landing/Problem';
+import ProductShowcase from '@/components/landing/ProductShowcase';
+import InteractiveDemo from '@/components/landing/InteractiveDemo';
+import FeatureBento from '@/components/landing/FeatureBento';
+import Infrastructure from '@/components/landing/Infrastructure';
 import HowItWorks from '@/components/landing/HowItWorks';
-import Benefits from '@/components/landing/Benefits';
 import Security from '@/components/landing/Security';
+import Roadmap from '@/components/landing/Roadmap';
 import CTA from '@/components/landing/CTA';
 import Footer from '@/components/landing/Footer';
 
@@ -13,9 +17,13 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Problem />
+      <ProductShowcase />
+      <InteractiveDemo />
+      <FeatureBento />
+      <Infrastructure />
       <HowItWorks />
-      <Benefits />
       <Security />
+      <Roadmap />
       <CTA />
       <Footer />
     </div>

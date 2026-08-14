@@ -11,7 +11,7 @@ export default function Security() {
   ];
 
   return (
-    <section id="security" className="py-24 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative overflow-hidden">
+    <section id="security" className="py-32 bg-gray-900 relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-green-500/10 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
@@ -25,28 +25,35 @@ export default function Security() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center max-w-2xl mx-auto mb-16"
+          className="text-center max-w-3xl mx-auto mb-20"
         >
-          <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
-            Your credentials stay yours
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+            Built to keep your credentials private
           </h2>
-          <p className="text-lg text-gray-300">
-            MailDesk is designed to act as a secure interface between you and your email provider. Your Resend credentials are protected server-side and are never exposed to the browser.
+          <p className="text-xl text-gray-300">
+            Your API keys are encrypted at rest and never exposed to the browser. We use industry-standard encryption to protect your data.
           </p>
         </motion.div>
 
         {/* Security flow visualization */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="max-w-4xl mx-auto mb-16"
+          className="max-w-4xl mx-auto mb-20"
         >
           <div className="flex flex-col md:flex-row items-center justify-center gap-4 md:gap-0">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-6 py-4 text-center">
-              <div className="text-sm font-medium text-white">Your Resend account</div>
-            </div>
+            {/* API key */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-6 py-4 text-center"
+            >
+              <div className="text-sm font-medium text-white">API key</div>
+            </motion.div>
             
             <div className="hidden md:block text-green-500/50">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -60,9 +67,21 @@ export default function Security() {
               </svg>
             </div>
 
-            <div className="bg-gradient-to-br from-green-500/20 to-blue-500/20 backdrop-blur-sm border border-green-500/30 rounded-xl px-6 py-4 text-center">
-              <div className="text-sm font-medium text-green-400">Encrypted key</div>
-            </div>
+            {/* Encrypted */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="bg-gradient-to-br from-green-500/20 to-blue-500/20 backdrop-blur-sm border border-green-500/30 rounded-xl px-6 py-4 text-center relative"
+            >
+              <div className="absolute top-2 right-2">
+                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div className="text-sm font-medium text-green-400">Encrypted</div>
+            </motion.div>
 
             <div className="hidden md:block text-green-500/50">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,9 +95,16 @@ export default function Security() {
               </svg>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-6 py-4 text-center">
-              <div className="text-sm font-medium text-white">MailDesk</div>
-            </div>
+            {/* Server */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-6 py-4 text-center"
+            >
+              <div className="text-sm font-medium text-white">Server</div>
+            </motion.div>
 
             <div className="hidden md:block text-green-500/50">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -92,9 +118,16 @@ export default function Security() {
               </svg>
             </div>
 
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-6 py-4 text-center">
+            {/* Resend */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.9 }}
+              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl px-6 py-4 text-center"
+            >
               <div className="text-sm font-medium text-white">Resend</div>
-            </div>
+            </motion.div>
           </div>
         </motion.div>
 
