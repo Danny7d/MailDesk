@@ -33,13 +33,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex">
-              <div className="flex-shrink-0 flex items-center">
-                <h1 className="text-xl font-bold text-gray-900">MailDesk</h1>
-              </div>
+            <div className="flex items-center">
+              <h1 className="text-xl font-bold text-gray-900">MailDesk</h1>
             </div>
             <div className="flex items-center">
-              <span className="text-gray-700 mr-4">{session.user?.email || 'User'}</span>
+              <span className="text-gray-700 mr-4 hidden sm:block">{session.user?.email || 'User'}</span>
               <button
                 onClick={() => signOut({ callbackUrl: '/' })}
                 className="text-gray-700 hover:text-gray-900 px-3 py-2 text-sm font-medium"
@@ -51,9 +49,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </nav>
 
-      <div className="flex">
+      <div className="flex flex-col md:flex-row">
         {/* Sidebar */}
-        <aside className="w-64 bg-white border-r border-gray-200 min-h-screen">
+        <aside className="w-full md:w-64 bg-white border-r border-gray-200">
           <nav className="mt-5 px-2">
             <div className="space-y-1">
               {navigation.map((item) => {
@@ -78,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 md:p-8">
           {children}
         </main>
       </div>

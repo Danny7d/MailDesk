@@ -9,17 +9,17 @@ export default async function DashboardPage() {
     return null;
   }
 
-  // Get user's email count
-  const emailCount = await prisma.email.count({
-    where: { userId: session.user.id },
-  });
-
-  // Get recent emails
-  const recentEmails = await prisma.email.findMany({
+  // Get all emails for the user
+  const emails = await prisma.email.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
-    take: 5,
   });
+
+  // Get user's email count
+  const emailCount = emails.length;
+
+  // Get recent emails
+  const recentEmails = emails.slice(0, 5);
 
   // Check if user has connected Resend
   const connectedProvider = await prisma.connectedProvider.findFirst({
@@ -66,10 +66,19 @@ export default async function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900">Recent Emails</h2>
         </div>
         {recentEmails.length === 0 ? (
-          <div className="p-6 text-center text-gray-600">
-            No emails sent yet.{' '}
-            <Link href="/dashboard/compose" className="text-blue-600 hover:text-blue-700">
-              Send your first email
+          <div className="p-12 text-center">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No emails sent yet</h3>
+            <p className="text-gray-600 mb-4">Your sent emails will appear here</p>
+            <Link
+              href="/dashboard/compose"
+              className="inline-block bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Compose Email
             </Link>
           </div>
         ) : (
