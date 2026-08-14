@@ -89,7 +89,7 @@ export default function FeatureBento() {
     {
       title: 'Email history',
       description: 'Track what you\'ve sent with delivery status.',
-      size: 'col-span-1 row-span-2',
+      size: 'col-span-1 row-span-1',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -100,7 +100,6 @@ export default function FeatureBento() {
           {[
             { subject: 'Welcome email', status: 'Delivered' },
             { subject: 'Account ready', status: 'Delivered' },
-            { subject: 'Project update', status: 'Delivered' },
           ].map((email, i) => (
             <div key={i} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg p-2.5">
               <span className="text-xs font-medium text-gray-700 truncate flex-1">{email.subject}</span>
@@ -153,7 +152,7 @@ export default function FeatureBento() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[200px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[180px]">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
