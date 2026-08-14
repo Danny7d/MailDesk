@@ -84,7 +84,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: 'Resend connected successfully',
-      senderIdentities,
+      senderIdentities: senderIdentities.map((s) => s.email),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
