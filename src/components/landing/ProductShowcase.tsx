@@ -1,8 +1,31 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ProductShowcase() {
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'success'>('idle');
+
+  const handleSend = () => {
+    if (!to || !subject || !message) return;
+    setStatus('sending');
+    
+    // Simulate sending delay
+    setTimeout(() => {
+      setStatus('success');
+    }, 2000);
+  };
+
+  const handleReset = () => {
+    setTo('');
+    setSubject('');
+    setMessage('');
+    setStatus('idle');
+  };
+
   const features = [
     {
       id: 'compose',
@@ -82,29 +105,93 @@ export default function ProductShowcase() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">To</label>
                         <input
                           type="email"
-                          value="customer@example.com"
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 text-sm"
+                          value={to}
+                          onChange={(e) => setTo(e.target.value)}
+                          placeholder="customer@example.com"
+                          disabled={status !== 'idle'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
                         <input
                           type="text"
-                          value="Welcome to MailDesk"
-                          readOnly
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 text-sm"
+                          value={subject}
+                          onChange={(e) => setSubject(e.target.value)}
+                          placeholder="Welcome to MailDesk"
+                          disabled={status !== 'idle'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
                         <textarea
-                          value="Thank you for signing up..."
-                          readOnly
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          placeholder="Thank you for signing up..."
                           rows={3}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900 text-sm resize-none"
+                          disabled={status !== 'idle'}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         />
                       </div>
+                      <AnimatePresence mode="wait">
+                        {status === 'idle' && (
+                          <motion.button
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={handleSend}
+                            disabled={!to || !subject || !message}
+                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                          >
+                            Send Email
+                          </motion.button>
+                        )}
+                        {status === 'sending' && (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="w-full bg-gray-100 border border-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2"
+                          >
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            </motion.div>
+                            Sending...
+                          </motion.div>
+                        )}
+                        {status === 'success' && (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="w-full bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Email sent successfully
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                      {status === 'success' && (
+                        <motion.button
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          onClick={handleReset}
+                          className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                        >
+                          Send another
+                        </motion.button>
+                      )}
+                      <p className="text-xs text-gray-500 text-center">
+                        This is a marketing demo. No email will actually be sent.
+                      </p>
                     </div>
                   )}
                   {feature.id === 'sender' && (
