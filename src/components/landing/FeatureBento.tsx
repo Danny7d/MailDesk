@@ -7,7 +7,6 @@ export default function FeatureBento() {
     {
       title: 'No code required',
       description: 'Skip the API, SDK, and backend. Just compose and send.',
-      size: 'col-span-2 row-span-2',
       icon: (
         <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -42,7 +41,6 @@ export default function FeatureBento() {
     {
       title: 'Your Resend account',
       description: 'Connect your existing infrastructure. We don\'t replace your provider.',
-      size: 'col-span-1 row-span-1',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -65,7 +63,6 @@ export default function FeatureBento() {
     {
       title: 'Simple enough for anyone',
       description: 'Compose emails through a familiar interface.',
-      size: 'col-span-1 row-span-1',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
@@ -89,7 +86,6 @@ export default function FeatureBento() {
     {
       title: 'Email history',
       description: 'Track what you\'ve sent with delivery status.',
-      size: 'col-span-1 row-span-1',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -114,7 +110,6 @@ export default function FeatureBento() {
     {
       title: 'Secure by design',
       description: 'Your credentials are encrypted and never exposed.',
-      size: 'col-span-1 row-span-1',
       icon: (
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -152,7 +147,7 @@ export default function FeatureBento() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 auto-rows-[180px]">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-[200px]">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -160,7 +155,7 @@ export default function FeatureBento() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className={`${feature.size} bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group`}
+              className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-2xl p-6 hover:border-blue-500/50 hover:shadow-xl hover:shadow-blue-500/10 transition-all duration-300 group"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center text-white group-hover:scale-110 transition-transform shadow-lg shadow-blue-500/25">
