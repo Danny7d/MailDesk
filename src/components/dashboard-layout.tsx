@@ -22,6 +22,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   const navigation = [
+    { name: 'Inbox', href: '/dashboard/inbox', icon: '📥' },
     { name: 'Dashboard', href: '/dashboard', icon: '📊' },
     { name: 'Compose', href: '/dashboard/compose', icon: '✉️' },
     { name: 'Sent', href: '/dashboard/sent', icon: '📤' },

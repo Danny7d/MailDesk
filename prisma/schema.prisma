@@ -18,10 +18,12 @@ model User {
   name          String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
+
   connectedProviders ConnectedProvider[]
   emails            Email[]
-  
+  emailAddresses    EmailAddress[]
+  incomingEmails    IncomingEmail[]
+
   @@index([email])
 }
 
@@ -52,10 +54,53 @@ model Email {
   errorMessage String?  // Error information if failed
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+}
+
+model EmailAddress {
+  id        String   @id @default(cuid())
+  userId    String
+  email     String   @unique
+  domain    String
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+}
+
+model IncomingEmail {
+  id              String   @id @default(cuid())
+  userId          String
+  emailId         String   @unique
+  messageId       String?
+  from            String
+  subject         String?
+  to              String[]
+  cc              String[]
+  bcc             String[]
+  textBody        String?  @db.Text
+  htmlBody        String?  @db.Text
+  headers         Json?
+  receivedAt      DateTime @default(now())
+  readAt          DateTime?
+  provider        String   @default("resend")
+  providerEventId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([emailId])
+  @@index([receivedAt])
+  @@index([readAt])
 }

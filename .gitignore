@@ -51,3 +51,4 @@ next-env.d.ts
 .claude
 .sixth
 .windsurf
+.env*
