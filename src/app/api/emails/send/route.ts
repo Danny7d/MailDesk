@@ -83,8 +83,8 @@ export async function POST(request: Request) {
     // Decrypt the API key
     const apiKey = decrypt(provider.encryptedKey, encryptionSecret!);
 
-    // Send the email
-    const result = await sendEmail(apiKey, sender, recipient, subject, message);
+    // Send the email with preserved spacing and formatting
+    const result = await sendEmail(apiKey, sender, recipient, subject, message, message);
 
     if (!result.success) {
       // Log the error without exposing sensitive information

@@ -57,6 +57,41 @@ export async function getSenderIdentities(apiKey: string): Promise<SenderIdentit
 }
 
 /**
+ * Formats a plain text or HTML message into clean email HTML,
+ * preserving paragraphs, line breaks, and spacing across all email clients.
+ */
+export function formatEmailHtml(message: string): string {
+  if (!message) return '';
+
+  // If already a full HTML document, leave it as is
+  if (/<!DOCTYPE|<html|<body/i.test(message)) {
+    return message;
+  }
+
+  // If the message already contains HTML block/break elements, preserve it
+  if (/<(p|br|div|table|h[1-6])\b/i.test(message)) {
+    return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #111827;">${message}</div>`;
+  }
+
+  // Normalize Windows CRLF and CR to LF
+  const normalized = message.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
+
+  // Split into paragraphs separated by two or more newlines
+  const paragraphs = normalized.split(/\n{2,}/);
+
+  const formattedParagraphs = paragraphs
+    .map((para) => para.trim())
+    .filter((para) => para.length > 0)
+    .map((para) => {
+      // Convert single newlines within a paragraph into <br /> tags
+      const withBreaks = para.replace(/\n/g, '<br />');
+      return `<p style="margin: 0 0 16px 0; margin-top: 0; line-height: 1.6;">${withBreaks}</p>`;
+    });
+
+  return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #111827;">${formattedParagraphs.join('')}</div>`;
+}
+
+/**
  * Sends an email using the Resend API
  */
 export async function sendEmail(
@@ -64,16 +99,20 @@ export async function sendEmail(
   from: string,
   to: string | string[],
   subject: string,
-  html: string
+  html: string,
+  text?: string
 ): Promise<SendEmailResult> {
   try {
     const resend = new Resend(apiKey);
+    const formattedHtml = formatEmailHtml(html);
+    const plainText = text || html;
 
     const { data, error } = await resend.emails.send({
       from,
       to: Array.isArray(to) ? to : [to],
       subject,
-      html,
+      html: formattedHtml,
+      text: plainText,
     });
 
     if (error) {

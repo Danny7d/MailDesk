@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Migration check
+        run: |
+          npm run db:generate
+          # Check that migration SQL was generated
+          test -f packages/db/migrations/0000_init.sql
+
+      - name: Audit
+        run: npm audit --audit-level=high
+
+      - name: Build Docker images
+        run: |
+          docker build -f apps/api/Dockerfile -t maildesk-api:test .
+          docker build -f apps/worker/Dockerfile -t maildesk-worker:test .
