@@ -1,14 +1,14 @@
 import { FastifyPluginAsync } from 'fastify';
-import { db, closePool } from '@maildesk/db';
+import { db } from '@maildesk/db';
 
 export const healthRoutes: FastifyPluginAsync = async (fastify) => {
   // /healthz - process health only, touches no dependencies
-  fastify.get('/healthz', async (request, reply) => {
+  fastify.get('/healthz', async () => {
     return { status: 'ok' };
   });
 
   // /readyz - checks dependencies with 1s timeout each
-  fastify.get('/readyz', async (request, reply) => {
+  fastify.get('/readyz', async (_request, reply) => {
     const checks = {
       postgres: false,
       redis: false,
@@ -19,11 +19,11 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
     // Check Postgres with timeout
     try {
       const pgPromise = Promise.race([
-        (db as any).execute('SELECT 1'),
-        new Promise((_, reject) => 
+        (db as { execute: (sql: string) => Promise<unknown> }).execute('SELECT 1'),
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Postgres timeout')), 1000)
         ),
-      ]) as Promise<any>;
+      ]) as Promise<unknown>;
       
       await pgPromise;
       checks.postgres = true;
@@ -33,10 +33,10 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Check Redis with timeout
     try {
-      const redis = (fastify as any).redis;
+      const redis = (fastify as { redis: { ping: () => Promise<string> } }).redis;
       const redisPromise = Promise.race([
         redis.ping(),
-        new Promise((_, reject) => 
+        new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Redis timeout')), 1000)
         ),
       ]) as Promise<string>;

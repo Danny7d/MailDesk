@@ -9,7 +9,7 @@ export const metricsPlugin: FastifyPluginAsync = async (fastify) => {
   fastify.addHook('onResponse', async (request, reply) => {
     decrementActiveConnections();
     
-    const duration = (reply as any).getResponseTime() / 1000; // Convert to seconds
+    const duration = (reply as { getResponseTime: () => number }).getResponseTime() / 1000; // Convert to seconds
     const route = request.routeOptions.url || request.url;
     
     recordHttpRequest(

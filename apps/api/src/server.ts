@@ -20,7 +20,7 @@ export async function buildServer() {
   });
 
   // Register Redis
-  const redis = new (Redis as any).default(config.REDIS_URL);
+  const redis = new (Redis as { default: new (url: string) => unknown }).default(config.REDIS_URL) as { ping: () => Promise<string>; quit: () => Promise<void> };
   await redis.ping();
   server.decorate('redis', redis);
 
@@ -49,10 +49,10 @@ export async function buildServer() {
 
   // Dev-only noop endpoint for testing
   if (config.NODE_ENV !== 'production') {
-    server.post('/_dev/noop', async (request, reply) => {
+    server.post('/_dev/noop', async (request) => {
       const { Queue } = await import('bullmq');
       const { MAINTENANCE_QUEUE } = await import('./queues.js');
-      
+
       const queue = new Queue(MAINTENANCE_QUEUE, {
         connection: {
           host: new URL(config.REDIS_URL).hostname,
@@ -60,10 +60,10 @@ export async function buildServer() {
         },
       });
 
-      const ctx = (request as any).context || { requestId: 'unknown' };
-      
+      const ctx = (request as { context?: { requestId: string } }).context || { requestId: 'unknown' };
+
       await queue.add('noop', { requestId: ctx.requestId });
-      
+
       return { status: 'enqueued', requestId: ctx.requestId };
     });
   }

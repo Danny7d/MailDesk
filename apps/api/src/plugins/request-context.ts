@@ -10,7 +10,7 @@ export const requestContextPlugin: FastifyPluginAsync = async (fastify) => {
     
     requestContext.run(ctx, () => {
       // Store context in request for later access
-      (request as any).context = ctx;
+      (request as { context: { requestId: string } }).context = ctx;
     });
     
     // Echo request ID in response header

@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Also ignore monorepo packages since they use different linting rules
+    "apps/**",
+    "packages/**",
   ]),
 ]);
 
