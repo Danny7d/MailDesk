@@ -19,7 +19,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
     // Check Postgres with timeout
     try {
       const pgPromise = Promise.race([
-        (db as { execute: (sql: string) => Promise<unknown> }).execute('SELECT 1'),
+        (db as unknown as { execute: (sql: string) => Promise<unknown> }).execute('SELECT 1'),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Postgres timeout')), 1000)
         ),
@@ -33,7 +33,7 @@ export const healthRoutes: FastifyPluginAsync = async (fastify) => {
 
     // Check Redis with timeout
     try {
-      const redis = (fastify as { redis: { ping: () => Promise<string> } }).redis;
+      const redis = (fastify as unknown as { redis: { ping: () => Promise<string> } }).redis;
       const redisPromise = Promise.race([
         redis.ping(),
         new Promise((_, reject) =>

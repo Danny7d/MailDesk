@@ -20,7 +20,7 @@ export async function buildServer() {
   });
 
   // Register Redis
-  const redis = new (Redis as { default: new (url: string) => unknown }).default(config.REDIS_URL) as { ping: () => Promise<string>; quit: () => Promise<void> };
+  const redis = new (Redis as unknown as { default: new (url: string) => unknown }).default(config.REDIS_URL) as { ping: () => Promise<string>; quit: () => Promise<void> };
   await redis.ping();
   server.decorate('redis', redis);
 
