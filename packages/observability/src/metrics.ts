@@ -26,8 +26,8 @@ export const activeConnections = new Gauge({
 });
 
 export function recordHttpRequest(method: string, route: string, statusCode: number, durationSeconds: number): void {
-  httpRequestDuration.labels(method, route, statusCode).observe(durationSeconds);
-  httpRequestTotal.labels(method, route, statusCode).inc();
+  httpRequestDuration.labels(method, route, String(statusCode)).observe(durationSeconds);
+  httpRequestTotal.labels(method, route, String(statusCode)).inc();
 }
 
 export function incrementActiveConnections(): void {

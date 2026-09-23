@@ -1,10 +1,11 @@
-import { buildServer } from './server';
+import { buildServer } from './server.js';
+import { getConfig } from './config.js';
 import { closePool } from '@maildesk/db';
 import { logger } from '@maildesk/observability';
 
 async function main() {
   const server = await buildServer();
-  const config = server.config as any;
+  const config = getConfig();
 
   const port = parseInt(config.PORT || '4000');
   

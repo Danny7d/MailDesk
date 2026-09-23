@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { decrypt, validateEncryptionSecret } from '@/lib/encryption';
-import { sendEmail } from '@/lib/resend';
+import { sendEmail, formatEmailHtml } from '@/lib/resend';
 import { z } from 'zod';
 
 // Simple rate limiting using in-memory map (for MVP)
@@ -121,6 +121,58 @@ export async function POST(request: Request) {
         status: 'sent',
       },
     });
+
+    // If recipient is a registered user (e.g. user sending to their logged-in email or another user),
+    // deliver directly to their incoming inbox
+    try {
+      const normalizedRecipient = recipient.toLowerCase().trim();
+      const recipientUser =
+        (await prisma.user.findUnique({
+          where: { email: normalizedRecipient },
+        })) ||
+        (
+          await prisma.emailAddress.findUnique({
+            where: { email: normalizedRecipient },
+            include: { user: true },
+          })
+        )?.user;
+
+      if (recipientUser) {
+        const inboundEmailId = result.messageId
+          ? `inbound_${result.messageId}`
+          : `inbound_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+        const existingIncoming = await prisma.incomingEmail.findFirst({
+          where: {
+            OR: [
+              { emailId: inboundEmailId },
+              ...(result.messageId ? [{ messageId: result.messageId }] : []),
+            ],
+          },
+        });
+
+        if (!existingIncoming) {
+          await prisma.incomingEmail.create({
+            data: {
+              userId: recipientUser.id,
+              emailId: inboundEmailId,
+              messageId: result.messageId || null,
+              from: sender,
+              subject,
+              to: [recipient],
+              cc: [],
+              bcc: [],
+              textBody: message,
+              htmlBody: formatEmailHtml(message),
+              provider: 'resend',
+              receivedAt: new Date(),
+            },
+          });
+        }
+      }
+    } catch (deliverError) {
+      console.error('Failed to deliver to local incoming inbox:', deliverError);
+    }
 
     return NextResponse.json({
       message: 'Email sent successfully',

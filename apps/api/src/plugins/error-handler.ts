@@ -9,8 +9,8 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
     const ctx = (request as any).context || { requestId: 'unknown' };
     
     logger.error({
-      error: error.message,
-      stack: error.stack,
+      error: (error as Error).message,
+      stack: (error as Error).stack,
       requestId: ctx.requestId,
       method: request.method,
       url: request.url,
@@ -19,7 +19,7 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
     const apiError = createApiError(
       errorTypes.internal_error,
       errorCodes.unexpected,
-      isProduction ? 'An internal error occurred' : error.message,
+      isProduction ? 'An internal error occurred' : (error as Error).message,
       ctx.requestId
     );
 

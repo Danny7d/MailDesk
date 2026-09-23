@@ -85,6 +85,23 @@ export async function POST(request: Request) {
       });
     }
 
+    // Also register user's login email in EmailAddress
+    const userEmailNormalized = user.email.toLowerCase().trim();
+    const userEmailDomain = userEmailNormalized.split('@')[1] || inboundDomain;
+    const existingUserAddress = await prisma.emailAddress.findUnique({
+      where: { email: userEmailNormalized },
+    });
+    if (!existingUserAddress) {
+      await prisma.emailAddress.create({
+        data: {
+          userId: user.id,
+          email: userEmailNormalized,
+          domain: userEmailDomain,
+          verified: true,
+        },
+      }).catch((e) => console.error('Failed to register user login email address:', e));
+    }
+
     return NextResponse.json(
       {
         message: 'Account created successfully',

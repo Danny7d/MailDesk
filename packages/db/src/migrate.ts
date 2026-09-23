@@ -1,6 +1,6 @@
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { db } from './client';
+import { db } from './client.js';
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

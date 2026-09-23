@@ -3,12 +3,12 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
 import rateLimit from '@fastify/rate-limit';
-import Redis from 'ioredis';
-import { getConfig } from './config';
-import { requestContextPlugin } from './plugins/request-context';
-import { errorHandlerPlugin } from './plugins/error-handler';
-import { metricsPlugin } from './plugins/metrics';
-import { healthRoutes } from './routes/health';
+import * as Redis from 'ioredis';
+import { getConfig } from './config.js';
+import { requestContextPlugin } from './plugins/request-context.js';
+import { errorHandlerPlugin } from './plugins/error-handler.js';
+import { metricsPlugin } from './plugins/metrics.js';
+import { healthRoutes } from './routes/health.js';
 import { logger } from '@maildesk/observability';
 
 export async function buildServer() {
@@ -20,7 +20,7 @@ export async function buildServer() {
   });
 
   // Register Redis
-  const redis = new Redis(config.REDIS_URL);
+  const redis = new (Redis as any).default(config.REDIS_URL);
   await redis.ping();
   server.decorate('redis', redis);
 
@@ -51,7 +51,7 @@ export async function buildServer() {
   if (config.NODE_ENV !== 'production') {
     server.post('/_dev/noop', async (request, reply) => {
       const { Queue } = await import('bullmq');
-      const { MAINTENANCE_QUEUE } = await import('./queues');
+      const { MAINTENANCE_QUEUE } = await import('./queues.js');
       
       const queue = new Queue(MAINTENANCE_QUEUE, {
         connection: {
@@ -69,14 +69,11 @@ export async function buildServer() {
   }
 
   // Graceful shutdown
-  const close = async () => {
+  server.addHook('onClose', async () => {
     logger.info('Shutting down server...');
-    await server.close();
     await redis.quit();
     logger.info('Shutdown complete');
-  };
-
-  server.decorate('close', close);
+  });
 
   return server;
 }

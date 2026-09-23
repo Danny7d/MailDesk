@@ -78,9 +78,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: 'duplicate' }, { status: 200 });
     }
 
-    // Route to user by recipient address
-    const recipient = eventData.to[0];
-    if (!recipient) {
+    // Collect all recipient candidates from to, cc, bcc
+    const recipientCandidates: string[] = [];
+    const addCandidates = (list: unknown) => {
+      if (Array.isArray(list)) {
+        for (const item of list) {
+          if (typeof item === 'string') {
+            const match = item.match(/<([^>]+)>/);
+            const clean = (match && match[1] ? match[1] : item).toLowerCase().trim();
+            if (clean && !recipientCandidates.includes(clean)) {
+              recipientCandidates.push(clean);
+            }
+          }
+        }
+      } else if (typeof list === 'string') {
+        const match = list.match(/<([^>]+)>/);
+        const clean = (match && match[1] ? match[1] : list).toLowerCase().trim();
+        if (clean && !recipientCandidates.includes(clean)) {
+          recipientCandidates.push(clean);
+        }
+      }
+    };
+
+    addCandidates(eventData.to);
+    addCandidates(eventData.cc);
+    addCandidates(eventData.bcc);
+
+    if (recipientCandidates.length === 0) {
       console.error('No recipient address in webhook payload');
       return NextResponse.json(
         { error: 'Invalid payload: missing recipient' },
@@ -88,16 +112,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize recipient address
-    const normalizedRecipient = recipient.toLowerCase().trim();
+    // Route to user: check User table directly (logged-in email) or EmailAddress table
+    let targetUserId: string | null = null;
 
-    const emailAddress = await prisma.emailAddress.findUnique({
-      where: { email: normalizedRecipient },
-      include: { user: true },
-    });
+    for (const recipientEmail of recipientCandidates) {
+      // 1. Check User table directly by email (the logged-in email!)
+      const user = await prisma.user.findUnique({
+        where: { email: recipientEmail },
+      });
+      if (user) {
+        targetUserId = user.id;
+        break;
+      }
 
-    if (!emailAddress) {
-      console.error(`No user found for recipient: ${normalizedRecipient}`);
+      // 2. Check EmailAddress table
+      const emailAddress = await prisma.emailAddress.findUnique({
+        where: { email: recipientEmail },
+      });
+      if (emailAddress) {
+        targetUserId = emailAddress.userId;
+        break;
+      }
+    }
+
+    if (!targetUserId) {
+      console.error(`No user found for recipients: ${recipientCandidates.join(', ')}`);
       return NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
@@ -105,38 +144,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Retrieve full email content from Resend
-    let emailContent;
+    let emailContent: { text?: string | null; html?: string | null; headers?: Record<string, unknown> } = {};
     try {
       const response = await resend.emails.receiving.get(eventData.email_id);
       if (response.error) {
         throw new Error(response.error.message);
       }
-      emailContent = response.data;
+      emailContent = {
+        text: response.data?.text || null,
+        html: response.data?.html || null,
+        headers: response.data?.headers || undefined,
+      };
     } catch (retrieveError) {
-      console.error('Failed to retrieve email content from Resend:', retrieveError);
-      return NextResponse.json(
-        { error: 'Failed to retrieve email content' },
-        { status: 500 }
-      );
+      console.error('Failed to retrieve email content from Resend, using payload data:', retrieveError);
+      emailContent = {
+        text: eventData.text || null,
+        html: eventData.html || null,
+      };
     }
 
     // Create IncomingEmail record
     await prisma.incomingEmail.create({
       data: {
-        userId: emailAddress.userId,
+        userId: targetUserId,
         emailId: eventData.email_id,
-        messageId: eventData.message_id,
+        messageId: eventData.message_id || null,
         from: eventData.from,
-        subject: eventData.subject,
-        to: eventData.to,
-        cc: eventData.cc || [],
-        bcc: eventData.bcc || [],
-        textBody: emailContent.text || null,
-        htmlBody: emailContent.html || null,
+        subject: eventData.subject || null,
+        to: Array.isArray(eventData.to) ? eventData.to : [eventData.to],
+        cc: Array.isArray(eventData.cc) ? eventData.cc : [],
+        bcc: Array.isArray(eventData.bcc) ? eventData.bcc : [],
+        textBody: emailContent.text || eventData.text || null,
+        htmlBody: emailContent.html || eventData.html || null,
         headers: emailContent.headers ? JSON.parse(JSON.stringify(emailContent.headers)) : null,
         provider: 'resend',
-        providerEventId: event.id,
-        receivedAt: new Date(eventData.created_at),
+        providerEventId: event.id || null,
+        receivedAt: new Date(eventData.created_at || Date.now()),
       },
     });
 

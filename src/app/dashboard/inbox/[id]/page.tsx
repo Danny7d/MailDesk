@@ -3,17 +3,23 @@ import { prisma } from '@/lib/db';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function EmailViewPage({ params }: { params: { id: string } }) {
+export default async function EmailViewPage({
+  params,
+}: {
+  params: Promise<{ id: string }> | { id: string };
+}) {
   const session = await auth();
 
   if (!session?.user?.id) {
     redirect('/login');
   }
 
+  const { id } = await params;
+
   // Get the email with user authorization check
   const email = await prisma.incomingEmail.findFirst({
     where: {
-      id: params.id,
+      id,
       userId: session.user.id,
     },
   });
@@ -25,7 +31,7 @@ export default async function EmailViewPage({ params }: { params: { id: string }
   // Mark as read if not already read
   if (email.readAt === null) {
     await prisma.incomingEmail.update({
-      where: { id: params.id },
+      where: { id },
       data: { readAt: new Date() },
     });
   }
@@ -84,17 +90,15 @@ export default async function EmailViewPage({ params }: { params: { id: string }
 
         {/* Email Body */}
         <div className="px-6 py-6">
-          {email.textBody ? (
+          {email.htmlBody ? (
+            <div
+              className="text-gray-900 text-sm leading-relaxed"
+              dangerouslySetInnerHTML={{ __html: email.htmlBody }}
+            />
+          ) : email.textBody ? (
             <pre className="whitespace-pre-wrap font-sans text-gray-900 text-sm leading-relaxed">
               {email.textBody}
             </pre>
-          ) : email.htmlBody ? (
-            <div className="text-sm text-gray-600">
-              <p className="mb-2">This email contains HTML content.</p>
-              <p className="text-xs text-gray-500">
-                HTML rendering will be available in a future update.
-              </p>
-            </div>
           ) : (
             <p className="text-gray-500 text-sm">No content available</p>
           )}
