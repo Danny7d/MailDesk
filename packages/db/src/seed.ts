@@ -1,5 +1,5 @@
 import { db } from './client.js';
-import { skeletonProbe } from './schema.js';
+import { skeletonProbe } from './schema/index.js';
 import { randomUUID } from 'node:crypto';
 
 async function main() {
