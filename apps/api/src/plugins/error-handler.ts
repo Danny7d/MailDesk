@@ -6,7 +6,7 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
   const isProduction = process.env.NODE_ENV === 'production';
 
   fastify.setErrorHandler((error, request, reply) => {
-    const ctx = (request as { context?: { requestId: string } }).context || { requestId: 'unknown' };
+    const ctx = (request as unknown as { context?: { requestId: string } }).context || { requestId: 'unknown' };
     
     logger.error({
       error: (error as Error).message,
@@ -27,7 +27,7 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
   });
 
   fastify.setNotFoundHandler((request, reply) => {
-    const ctx = (request as { context?: { requestId: string } }).context || { requestId: 'unknown' };
+    const ctx = (request as unknown as { context?: { requestId: string } }).context || { requestId: 'unknown' };
     
     const apiError = createApiError(
       errorTypes.not_found,

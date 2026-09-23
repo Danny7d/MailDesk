@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
+import { IncomingEmail } from '@prisma/client';
 import Link from 'next/link';
 
 export default async function InboxPage() {
@@ -83,7 +84,7 @@ export default async function InboxPage() {
           </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {emails.map((email) => {
+            {emails.map((email: IncomingEmail) => {
               const previewText = email.textBody
                 ? email.textBody.slice(0, 120)
                 : email.htmlBody

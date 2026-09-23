@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     const username = validatedData.name || validatedData.email.split('@')[0];
     const inboundAddress = generateInboundAddress(username);
     const inboundDomain = process.env.MAILDESK_INBOUND_DOMAIN!;
+    let finalInboundAddress = inboundAddress;
 
     // Check if email address already exists (unlikely but possible due to collision)
     const existingAddress = await prisma.emailAddress.findUnique({
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
     if (existingAddress) {
       // Regenerate with a different suffix
       const newInboundAddress = generateInboundAddress(username);
+      finalInboundAddress = newInboundAddress;
       await prisma.emailAddress.create({
         data: {
           userId: user.id,
@@ -99,7 +101,7 @@ export async function POST(request: Request) {
           domain: userEmailDomain,
           verified: true,
         },
-      }).catch((e) => console.error('Failed to register user login email address:', e));
+      }).catch((e: unknown) => console.error('Failed to register user login email address:', e));
     }
 
     return NextResponse.json(
@@ -109,7 +111,7 @@ export async function POST(request: Request) {
           id: user.id,
           email: user.email,
           name: user.name,
-          inboundAddress,
+          inboundAddress: finalInboundAddress,
         }
       },
       { status: 201 }
