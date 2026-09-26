@@ -1,35 +1,13 @@
 import { z } from 'zod';
 
-const configSchema = z
-  .object({
-    NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-    PORT: z.string().default('4000'),
-    DATABASE_URL: z.string().url().optional(),
-    REDIS_URL: z.string().url().optional(),
-    CORS_ORIGIN: z.string().url().default('http://localhost:3000'),
-    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-  })
-  .superRefine((data, ctx) => {
-    if (data.NODE_ENV === 'test') {
-      return;
-    }
-
-    if (!data.DATABASE_URL) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['DATABASE_URL'],
-        message: 'Required in development and production environments',
-      });
-    }
-
-    if (!data.REDIS_URL) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['REDIS_URL'],
-        message: 'Required in development and production environments',
-      });
-    }
-  });
+const configSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  PORT: z.string().default('4000'),
+  DATABASE_URL: z.string().url(),
+  REDIS_URL: z.string().url(),
+  CORS_ORIGIN: z.string().url().default('http://localhost:3000'),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+});
 
 export type Config = z.infer<typeof configSchema>;
 
