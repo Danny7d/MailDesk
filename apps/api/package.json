@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting skipped for API package'",
-    "test": "vitest",
+    "test": "vitest run",
     "test:integration": "vitest run test/readyz.integration.test.ts"
   },
   "devDependencies": {
@@ -29,6 +29,7 @@
     "@maildesk/observability": "*",
     "bullmq": "^5.29.0",
     "fastify": "^5.2.1",
+    "fastify-plugin": "^5.1.0",
     "ioredis": "^5.4.1",
     "zod": "^4.4.3"
   }

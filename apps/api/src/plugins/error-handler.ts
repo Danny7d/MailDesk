@@ -1,10 +1,9 @@
 import { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
 import { createApiError, errorTypes, errorCodes } from '@maildesk/contracts';
 import { logger } from '@maildesk/observability';
 
-export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-
+const errorHandlerPluginImpl: FastifyPluginAsync = async (fastify) => {
   fastify.setErrorHandler((error, request, reply) => {
     const ctx = (request as unknown as { context?: { requestId: string } }).context || { requestId: 'unknown' };
     
@@ -15,6 +14,8 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
       method: request.method,
       url: request.url,
     });
+
+    const isProduction = process.env.NODE_ENV === 'production';
 
     const apiError = createApiError(
       errorTypes.internal_error,
@@ -39,3 +40,5 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
     reply.status(404).send(apiError);
   });
 };
+
+export const errorHandlerPlugin = fp(errorHandlerPluginImpl, { name: 'errorHandlerPlugin' });

@@ -36,6 +36,10 @@ const sendEmailSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let stage = 'authenticate';
+  let providerAccepted = false;
+  let providerMessageId: string | undefined;
+
   try {
     const session = await auth();
 
@@ -51,25 +55,37 @@ export async function POST(request: Request) {
       );
     }
 
+    stage = 'validate_request';
     const body = await request.json();
     const { sender, recipient, subject, message } = sendEmailSchema.parse(body);
 
-    // Get the user's Resend connection
+    const senderDomain = sender.slice(sender.lastIndexOf('@') + 1).toLowerCase();
+    stage = 'load_provider_key';
     const provider = await prisma.connectedProvider.findFirst({
       where: {
         userId: session.user.id,
         provider: 'resend',
         status: 'connected',
+        domain: senderDomain,
+      },
+    });
+    const fallbackProvider = provider || await prisma.connectedProvider.findFirst({
+      where: {
+        userId: session.user.id,
+        provider: 'resend',
+        status: 'connected',
+        domain: '*',
       },
     });
 
-    if (!provider) {
+    if (!fallbackProvider) {
       return NextResponse.json(
-        { error: 'No Resend account connected. Please connect your account in settings.' },
+        { error: `No Resend API key is connected for ${senderDomain}. Add one in settings.` },
         { status: 400 }
       );
     }
 
+    stage = 'decrypt_provider_key';
     // Validate encryption secret
     const encryptionSecret = process.env.ENCRYPTION_KEY;
     if (!validateEncryptionSecret(encryptionSecret)) {
@@ -81,9 +97,10 @@ export async function POST(request: Request) {
     }
 
     // Decrypt the API key
-    const apiKey = decrypt(provider.encryptedKey, encryptionSecret!);
+    const apiKey = decrypt(fallbackProvider.encryptedKey, encryptionSecret!);
 
     // Send the email with preserved spacing and formatting
+    stage = 'send_with_resend';
     const result = await sendEmail(apiKey, sender, recipient, subject, message, message);
 
     if (!result.success) {
@@ -91,6 +108,7 @@ export async function POST(request: Request) {
       console.error('Email send failed:', result.error);
 
       // Save failed email to database
+      stage = 'save_failed_email_history';
       await prisma.email.create({
         data: {
           userId: session.user.id,
@@ -109,7 +127,11 @@ export async function POST(request: Request) {
       );
     }
 
+    providerAccepted = true;
+    providerMessageId = result.messageId;
+
     // Save successful email to database
+    stage = 'save_email_history';
     await prisma.email.create({
       data: {
         userId: session.user.id,
@@ -186,7 +208,16 @@ export async function POST(request: Request) {
       );
     }
 
-    console.error('Email send error:', error);
+    console.error('Email send error:', { stage, error });
+    if (providerAccepted) {
+      return NextResponse.json(
+        {
+          message: 'Resend accepted the email, but MailDesk could not save it to your history.',
+          messageId: providerMessageId,
+        },
+        { status: 202 }
+      );
+    }
     return NextResponse.json(
       { error: 'Failed to send email' },
       { status: 500 }

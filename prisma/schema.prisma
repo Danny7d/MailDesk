@@ -32,6 +32,7 @@ model ConnectedProvider {
   id           String   @id @default(cuid())
   userId       String
   provider     String   // "resend", "sendgrid", etc.
+  domain       String   @default("*") // Domain assigned to this key; * keeps legacy account-wide keys working
   encryptedKey String   // Encrypted API key
   status       String   // "connected", "disconnected", "error"
   createdAt    DateTime @default(now())
@@ -41,6 +42,7 @@ model ConnectedProvider {
   
   @@index([userId])
   @@index([provider])
+  @@index([userId, provider, domain])
 }
 
 model Email {

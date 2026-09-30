@@ -41,8 +41,9 @@ describe('API Health Endpoints', () => {
   });
 
   it('T5: Route that throws returns 500 with no stack trace in production', async () => {
-    // Add a temporary error route
-    server.route({
+    // Fastify forbids adding routes once started (first inject), so use a fresh instance
+    const errServer = await buildServer();
+    errServer.route({
       method: 'GET',
       url: '/_test/error',
       handler: async () => {
@@ -53,12 +54,13 @@ describe('API Health Endpoints', () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = 'production';
 
-    const response = await server.inject({
+    const response = await errServer.inject({
       method: 'GET',
       url: '/_test/error',
     });
 
     process.env.NODE_ENV = originalEnv;
+    await errServer.close();
 
     expect(response.statusCode).toBe(500);
     const body = response.json();

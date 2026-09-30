@@ -1,25 +1,19 @@
 'use client';
 
-import { useSession, signOut } from 'next-auth/react';
+import { signOut } from 'next-auth/react';
+import type { Session } from 'next-auth';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Image from 'next/image';
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { data: session, status } = useSession();
+export default function DashboardLayout({
+  children,
+  session,
+}: {
+  children: React.ReactNode;
+  session: Session;
+}) {
   const pathname = usePathname();
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!session) {
-    return null;
-  }
 
   const navigation = [
     { name: 'Inbox', href: '/dashboard/inbox', icon: '📥' },

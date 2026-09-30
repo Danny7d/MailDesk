@@ -68,7 +68,7 @@ export default function ComposePage() {
         return;
       }
 
-      setSuccess('Email sent successfully!');
+      setSuccess(data.message || 'Email sent successfully!');
 
       // Clear form
       setRecipient('');

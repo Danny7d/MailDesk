@@ -29,12 +29,6 @@ describe('API Readyz Integration', () => {
     expect(body.checks).toHaveProperty('redis', true);
   });
 
-  it('T3: /readyz returns 503 when Postgres is unreachable', async () => {
-    // This test would require mocking or stopping Postgres
-    // For now, we'll skip this as it requires Testcontainers setup
-    // This will be implemented in the integration test project
-    it.skip('T3: /readyz returns 503 when Postgres is unreachable', async () => {
-      // Implementation with Testcontainers
-    });
-  });
+  // Needs Testcontainers (or a way to stop Postgres) - tracked for later.
+  it.skip('T3: /readyz returns 503 when Postgres is unreachable', async () => {});
 });

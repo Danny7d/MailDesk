@@ -53,6 +53,11 @@ export const authConfig: AuthOptions = {
   ],
   session: {
     strategy: 'jwt',
+    // Keep the browser's session cookie persistent across browser restarts.
+    maxAge: 30 * 24 * 60 * 60,
+  },
+  jwt: {
+    maxAge: 30 * 24 * 60 * 60,
   },
   pages: {
     signIn: '/login',

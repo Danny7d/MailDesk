@@ -6,7 +6,8 @@ import { validateResendApiKey, getSenderIdentities } from '@/lib/resend';
 import { z } from 'zod';
 
 const connectSchema = z.object({
-  apiKey: z.string().min(1, 'API key is required'),
+  apiKey: z.string().trim().min(1, 'API key is required'),
+  domain: z.string().trim().toLowerCase().min(1, 'Domain is required').optional(),
 });
 
 export async function POST(request: Request) {
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { apiKey } = connectSchema.parse(body);
+    const { apiKey, domain } = connectSchema.parse(body);
 
     // Validate encryption secret
     const encryptionSecret = process.env.ENCRYPTION_KEY;
@@ -50,14 +51,30 @@ export async function POST(request: Request) {
       );
     }
 
+    const requestedDomain = domain?.replace(/^@/, '');
+    if (domain && !requestedDomain) {
+      return NextResponse.json({ error: 'Enter a valid sending domain' }, { status: 400 });
+    }
+    if (
+      requestedDomain &&
+      !senderIdentities.some((identity) => identity.email.toLowerCase() === requestedDomain)
+    ) {
+      return NextResponse.json(
+        { error: 'That domain is not available for this Resend API key' },
+        { status: 400 }
+      );
+    }
+
     // Encrypt the API key
     const encryptedKey = encrypt(apiKey, encryptionSecret!);
 
-    // Check if user already has a Resend connection
+    // Keep one encrypted key per user/provider/domain. The legacy '*' slot
+    // remains available to clients that connect without choosing a domain.
     const existingProvider = await prisma.connectedProvider.findFirst({
       where: {
         userId: session.user.id,
         provider: 'resend',
+        domain: requestedDomain || '*',
       },
     });
 
@@ -68,6 +85,7 @@ export async function POST(request: Request) {
         data: {
           encryptedKey,
           status: 'connected',
+          domain: requestedDomain || '*',
         },
       });
     } else {
@@ -76,6 +94,7 @@ export async function POST(request: Request) {
         data: {
           userId: session.user.id,
           provider: 'resend',
+          domain: requestedDomain || '*',
           encryptedKey,
           status: 'connected',
         },
@@ -85,6 +104,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       message: 'Resend connected successfully',
       senderIdentities: senderIdentities.map((s) => s.email),
+      domain: requestedDomain || '*',
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

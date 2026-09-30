@@ -1,0 +1,164 @@
+diff --git a/apps/api/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json b/apps/api/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json
+index 8fa7ab0..6ddd5e7 100644
+--- a/apps/api/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json
++++ b/apps/api/node_modules/.vite/vitest/da39a3ee5e6b4b0d3255bfef95601890afd80709/results.json
+@@ -1 +1 @@
+-{"version":"3.2.7","results":[[":test/health.test.ts",{"duration":10006.244737,"failed":true}],[":test/readyz.integration.test.ts",{"duration":10006.638389,"failed":true}],[":test/config.test.ts",{"duration":7.192754999999977,"failed":false}]]}
+\ No newline at end of file
++{"version":"3.2.7","results":[[":test/health.test.ts",{"duration":146.45277399999998,"failed":false}],[":test/readyz.integration.test.ts",{"duration":157.98501699999997,"failed":true}],[":test/config.test.ts",{"duration":8.316682000000014,"failed":false}]]}
+\ No newline at end of file
+diff --git a/apps/api/package.json b/apps/api/package.json
+index eb4c2b4..7a02bdb 100644
+--- a/apps/api/package.json
++++ b/apps/api/package.json
+@@ -10,7 +10,7 @@
+     "start": "node dist/index.js",
+     "typecheck": "tsc --noEmit",
+     "lint": "echo 'Linting skipped for API package'",
+-    "test": "vitest",
++    "test": "vitest run",
+     "test:integration": "vitest run test/readyz.integration.test.ts"
+   },
+   "devDependencies": {
+@@ -29,6 +29,7 @@
+     "@maildesk/observability": "*",
+     "bullmq": "^5.29.0",
+     "fastify": "^5.2.1",
++    "fastify-plugin": "^5.1.0",
+     "ioredis": "^5.4.1",
+     "zod": "^4.4.3"
+   }
+diff --git a/apps/api/src/plugins/error-handler.ts b/apps/api/src/plugins/error-handler.ts
+index 3dc3868..44ee7ec 100644
+--- a/apps/api/src/plugins/error-handler.ts
++++ b/apps/api/src/plugins/error-handler.ts
+@@ -1,10 +1,9 @@
+ import { FastifyPluginAsync } from 'fastify';
++import fp from 'fastify-plugin';
+ import { createApiError, errorTypes, errorCodes } from '@maildesk/contracts';
+ import { logger } from '@maildesk/observability';
+ 
+-export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
+-  const isProduction = process.env.NODE_ENV === 'production';
+-
++const errorHandlerPluginImpl: FastifyPluginAsync = async (fastify) => {
+   fastify.setErrorHandler((error, request, reply) => {
+     const ctx = (request as unknown as { context?: { requestId: string } }).context || { requestId: 'unknown' };
+     
+@@ -16,6 +15,8 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
+       url: request.url,
+     });
+ 
++    const isProduction = process.env.NODE_ENV === 'production';
++
+     const apiError = createApiError(
+       errorTypes.internal_error,
+       errorCodes.unexpected,
+@@ -39,3 +40,5 @@ export const errorHandlerPlugin: FastifyPluginAsync = async (fastify) => {
+     reply.status(404).send(apiError);
+   });
+ };
++
++export const errorHandlerPlugin = fp(errorHandlerPluginImpl, { name: 'errorHandlerPlugin' });
+diff --git a/apps/api/src/plugins/metrics.ts b/apps/api/src/plugins/metrics.ts
+index 759b4ad..2b89a5d 100644
+--- a/apps/api/src/plugins/metrics.ts
++++ b/apps/api/src/plugins/metrics.ts
+@@ -1,7 +1,8 @@
+ import { FastifyPluginAsync } from 'fastify';
++import fp from 'fastify-plugin';
+ import { registry, recordHttpRequest, incrementActiveConnections, decrementActiveConnections } from '@maildesk/observability';
+ 
+-export const metricsPlugin: FastifyPluginAsync = async (fastify) => {
++const metricsPluginImpl: FastifyPluginAsync = async (fastify) => {
+   fastify.addHook('onRequest', async () => {
+     incrementActiveConnections();
+   });
+@@ -25,3 +26,5 @@ export const metricsPlugin: FastifyPluginAsync = async (fastify) => {
+     return await registry.metrics();
+   });
+ };
++
++export const metricsPlugin = fp(metricsPluginImpl, { name: 'metricsPlugin' });
+diff --git a/apps/api/src/plugins/request-context.ts b/apps/api/src/plugins/request-context.ts
+index 05aac91..5b26916 100644
+--- a/apps/api/src/plugins/request-context.ts
++++ b/apps/api/src/plugins/request-context.ts
+@@ -1,7 +1,8 @@
+ import { FastifyPluginAsync } from 'fastify';
++import fp from 'fastify-plugin';
+ import { requestContext, generateRequestId } from '@maildesk/observability';
+ 
+-export const requestContextPlugin: FastifyPluginAsync = async (fastify) => {
++const requestContextPluginImpl: FastifyPluginAsync = async (fastify) => {
+   fastify.addHook('onRequest', async (request, reply) => {
+     const requestId = request.headers['x-request-id'] as string | undefined;
+     const ctx = {
+@@ -17,3 +18,5 @@ export const requestContextPlugin: FastifyPluginAsync = async (fastify) => {
+     reply.header('x-request-id', ctx.requestId);
+   });
+ };
++
++export const requestContextPlugin = fp(requestContextPluginImpl, { name: 'requestContextPlugin' });
+diff --git a/apps/api/test/health.test.ts b/apps/api/test/health.test.ts
+index 44f1208..172e6bd 100644
+--- a/apps/api/test/health.test.ts
++++ b/apps/api/test/health.test.ts
+@@ -41,8 +41,9 @@ describe('API Health Endpoints', () => {
+   });
+ 
+   it('T5: Route that throws returns 500 with no stack trace in production', async () => {
+-    // Add a temporary error route
+-    server.route({
++    // Fastify forbids adding routes once started (first inject), so use a fresh instance
++    const errServer = await buildServer();
++    errServer.route({
+       method: 'GET',
+       url: '/_test/error',
+       handler: async () => {
+@@ -53,12 +54,13 @@ describe('API Health Endpoints', () => {
+     const originalEnv = process.env.NODE_ENV;
+     process.env.NODE_ENV = 'production';
+ 
+-    const response = await server.inject({
++    const response = await errServer.inject({
+       method: 'GET',
+       url: '/_test/error',
+     });
+ 
+     process.env.NODE_ENV = originalEnv;
++    await errServer.close();
+ 
+     expect(response.statusCode).toBe(500);
+     const body = response.json();
+diff --git a/apps/api/test/readyz.integration.test.ts b/apps/api/test/readyz.integration.test.ts
+index e5b6cfa..cba2fac 100644
+--- a/apps/api/test/readyz.integration.test.ts
++++ b/apps/api/test/readyz.integration.test.ts
+@@ -29,12 +29,6 @@ describe('API Readyz Integration', () => {
+     expect(body.checks).toHaveProperty('redis', true);
+   });
+ 
+-  it('T3: /readyz returns 503 when Postgres is unreachable', async () => {
+-    // This test would require mocking or stopping Postgres
+-    // For now, we'll skip this as it requires Testcontainers setup
+-    // This will be implemented in the integration test project
+-    it.skip('T3: /readyz returns 503 when Postgres is unreachable', async () => {
+-      // Implementation with Testcontainers
+-    });
+-  });
++  // Needs Testcontainers (or a way to stop Postgres) - tracked for later.
++  it.skip('T3: /readyz returns 503 when Postgres is unreachable', async () => {});
+ });
+diff --git a/package-lock.json b/package-lock.json
+index 8b81e41..dc10bfb 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -56,6 +56,7 @@
+         "@maildesk/observability": "*",
+         "bullmq": "^5.29.0",
+         "fastify": "^5.2.1",
++        "fastify-plugin": "^5.1.0",
+         "ioredis": "^5.4.1",
+         "zod": "^4.4.3"
+       },

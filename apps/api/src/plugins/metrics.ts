@@ -1,7 +1,8 @@
 import { FastifyPluginAsync } from 'fastify';
+import fp from 'fastify-plugin';
 import { registry, recordHttpRequest, incrementActiveConnections, decrementActiveConnections } from '@maildesk/observability';
 
-export const metricsPlugin: FastifyPluginAsync = async (fastify) => {
+const metricsPluginImpl: FastifyPluginAsync = async (fastify) => {
   fastify.addHook('onRequest', async () => {
     incrementActiveConnections();
   });
@@ -25,3 +26,5 @@ export const metricsPlugin: FastifyPluginAsync = async (fastify) => {
     return await registry.metrics();
   });
 };
+
+export const metricsPlugin = fp(metricsPluginImpl, { name: 'metricsPlugin' });

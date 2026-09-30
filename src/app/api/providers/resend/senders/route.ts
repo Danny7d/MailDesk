@@ -12,17 +12,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get the user's Resend connection
-    const provider = await prisma.connectedProvider.findFirst({
+    // Return available domains from every saved key without exposing key data.
+    const providers = await prisma.connectedProvider.findMany({
       where: {
         userId: session.user.id,
         provider: 'resend',
         status: 'connected',
       },
+      orderBy: { createdAt: 'asc' },
     });
 
-    if (!provider) {
-      return NextResponse.json({ senders: [] });
+    if (providers.length === 0) {
+      return NextResponse.json({ senders: [], connections: [] });
     }
 
     // Validate encryption secret
@@ -35,16 +36,21 @@ export async function GET() {
       );
     }
 
-    // Decrypt the API key
-    const apiKey = decrypt(provider.encryptedKey, encryptionSecret!);
+    const connections = await Promise.all(providers.map(async (provider) => {
+      const apiKey = decrypt(provider.encryptedKey, encryptionSecret!);
+      const identities = await getSenderIdentities(apiKey);
+      const availableDomains = identities.map((identity) => identity.email.toLowerCase());
+      const domain = provider.domain === '*' ? '*' : provider.domain.toLowerCase();
 
-    // Get sender identities
-    const senders = await getSenderIdentities(apiKey);
+      return {
+        domain,
+        legacy: domain === '*',
+        senders: domain === '*' ? availableDomains : [domain],
+      };
+    }));
 
-    // Format senders for the UI
-    const formattedSenders = senders.map((s) => s.email);
-
-    return NextResponse.json({ senders: formattedSenders });
+    const formattedSenders = [...new Set(connections.flatMap((connection) => connection.senders))];
+    return NextResponse.json({ senders: formattedSenders, connections });
   } catch (error) {
     console.error('Failed to fetch sender identities:', error);
     return NextResponse.json(
