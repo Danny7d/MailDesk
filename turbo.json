@@ -19,10 +19,12 @@
     },
     "test": {
       "dependsOn": ["build"],
+      "env": ["DATABASE_URL", "REDIS_URL"],
       "outputs": ["coverage/**"]
     },
     "test:integration": {
       "dependsOn": ["build"],
+      "env": ["DATABASE_URL", "REDIS_URL"],
       "outputs": ["coverage/**"]
     }
   }
