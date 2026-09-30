@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting skipped for API package'",
     "test": "vitest",
-    "test:integration": "vitest --config vitest.integration.config.ts"
+    "test:integration": "vitest run test/readyz.integration.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22",

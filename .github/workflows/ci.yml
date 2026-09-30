@@ -12,10 +12,30 @@ concurrency:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: maildesk
+          POSTGRES_PASSWORD: maildesk_password
+          POSTGRES_DB: maildesk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U maildesk -d maildesk"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      # Config validation (apps/api, apps/worker) requires these in every env.
-      # NOTE: no service containers are wired up yet, so the test steps still
-      # need a live Postgres/Redis to actually pass.
       DATABASE_URL: postgresql://maildesk:maildesk_password@localhost:5432/maildesk
       REDIS_URL: redis://localhost:6379
     steps:
@@ -45,9 +65,9 @@ jobs:
 
       - name: Migration check
         run: |
-          npm run db:generate
+          npm run db:generate --workspace=@maildesk/db
           # Check that migration SQL was generated
-          test -f packages/db/migrations/0000_init.sql
+          test -n "$(find packages/db/migrations -maxdepth 1 -type f -name '0000_*.sql' -print -quit)"
 
       - name: Audit
         run: npm audit --audit-level=high

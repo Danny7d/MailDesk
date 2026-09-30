@@ -1,11 +1,11 @@
 import { db } from '@maildesk/db';
 export const healthRoutes = async (fastify) => {
     // /healthz - process health only, touches no dependencies
-    fastify.get('/healthz', async (request, reply) => {
+    fastify.get('/healthz', async () => {
         return { status: 'ok' };
     });
     // /readyz - checks dependencies with 1s timeout each
-    fastify.get('/readyz', async (request, reply) => {
+    fastify.get('/readyz', async (_request, reply) => {
         const checks = {
             postgres: false,
             redis: false,

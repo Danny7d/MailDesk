@@ -39,7 +39,7 @@ export async function buildServer() {
     await server.register(healthRoutes);
     // Dev-only noop endpoint for testing
     if (config.NODE_ENV !== 'production') {
-        server.post('/_dev/noop', async (request, reply) => {
+        server.post('/_dev/noop', async (request) => {
             const { Queue } = await import('bullmq');
             const { MAINTENANCE_QUEUE } = await import('./queues.js');
             const queue = new Queue(MAINTENANCE_QUEUE, {

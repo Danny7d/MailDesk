@@ -11,7 +11,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Linting skipped for worker package'",
     "test": "vitest",
-    "test:integration": "vitest --config vitest.integration.config.ts"
+    "test:integration": "vitest run --passWithNoTests test/*.integration.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22",
