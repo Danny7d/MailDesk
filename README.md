@@ -1,222 +1,118 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="files/maildesk-logo-dark.svg">
+    <img src="files/maildesk-logo-light.svg" alt="MailDesk" height="48">
+  </picture>
+</p>
+
 # MailDesk
 
-A no-code email sending SaaS that allows users to send transactional emails through their Resend account without writing code.
+A no-code email platform on top of [Resend](https://resend.com). Connect your own Resend account, then send and receive email from a Gmail-style dashboard, with no code and no API calls.
 
-## Features
+**Live:** https://inbound.tably.site
 
-- Connect your Resend API key securely
-- Compose and send emails from verified domains
-- View email sending history
-- Receive emails via inbound email addresses
-- AES-256-GCM encryption for API keys
-- User isolation and authentication
+> **Status:** the app described here (v1) is what runs in production. A v2 platform rebuild is in progress and is **not deployed yet**. See [Roadmap](#roadmap).
 
-## Tech Stack
+## What it does
 
-- **Frontend:** Next.js 16, TypeScript, Tailwind CSS
-- **Backend:** Next.js API Routes
-- **Database:** Supabase (PostgreSQL) with Prisma ORM
-- **Auth:** NextAuth.js v5
-- **Email:** Resend API
-- **Validation:** Zod
+- **Connect Resend** with your own API key (stored encrypted, never sent back to the browser)
+- **Per-domain keys:** assign a key to a specific sending domain, or leave it account-wide
+- **Compose and send** from your verified domains
+- **Inbox:** receive email at generated inbound addresses via Resend webhooks, with read/unread state
+- **Sent history** with delivery status
+- **Accounts:** email + password sign-up; every query is scoped to the signed-in user
 
-## Quick Start
+## Stack (v1, what's deployed)
 
-1. **Install dependencies:**
-```bash
-npm install
-```
-
-2. **Set up environment variables:**
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your values:
-```env
-DATABASE_URL="postgresql://postgres:password@project-ref.supabase.co:5432/postgres"
-AUTH_SECRET="your-auth-secret"
-ENCRYPTION_KEY="your-encryption-key"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-RESEND_API_KEY="re_xxxxxxxxx"
-RESEND_WEBHOOK_SECRET="whsec_xxxxxxxxx"
-MAILDESK_INBOUND_DOMAIN="your-inbound-domain.com"
-```
-
-Generate secrets:
-```bash
-openssl rand -base64 32  # For AUTH_SECRET
-openssl rand -base64 32  # For ENCRYPTION_KEY
-```
-
-**Note:** `RESEND_API_KEY` is MailDesk's own Resend API key for inbound email receiving. This is separate from users' encrypted API keys used for outbound sending.
-
-3. **Run database migrations:**
-```bash
-npx prisma migrate dev
-npx prisma generate
-```
-
-4. **Start development server:**
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-## Production
-
-```bash
-npm run build
-npm start
-```
-
-**Important:** Use a managed PostgreSQL service (Supabase, Neon, RDS) and set all environment variables in production.
-
-## Local Inbound Email Testing
-
-To test inbound email functionality locally, you need to expose your development server to the public internet so Resend can send webhooks to it.
-
-### 1. Expose localhost with a tunnel
-
-**Using ngrok:**
-```bash
-ngrok http 3000
-```
-
-**Using Cloudflare Tunnel:**
-```bash
-cloudflared tunnel --url http://localhost:3000
-```
-
-Note the public URL (e.g., `https://abc123.ngrok.io`).
-
-### 2. Configure Resend webhook
-
-1. Go to [Resend Webhooks](https://resend.com/webhooks)
-2. Click "Add Webhook"
-3. Enter your webhook URL: `https://your-tunnel-url.com/api/webhooks/resend`
-4. Select event type: `email.received`
-5. Copy the `RESEND_WEBHOOK_SECRET` from the webhook details page
-6. Add the secret to your `.env` file
-
-### 3. Required environment variables
-
-Ensure these are set in your `.env`:
-```env
-DATABASE_URL="postgresql://..."
-AUTH_SECRET="your-auth-secret"
-ENCRYPTION_KEY="your-encryption-key"
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
-RESEND_API_KEY="re_xxxxxxxxx"  # MailDesk's Resend API key
-RESEND_WEBHOOK_SECRET="whsec_xxxxxxxxx"  # From webhook setup
-MAILDESK_INBOUND_DOMAIN="your-resend-domain.resend.app"
-```
-
-### 4. Create a test user
-
-1. Start the dev server: `npm run dev`
-2. Sign up at http://localhost:3000/signup
-3. The signup response includes your generated inbound address (e.g., `username-abc123@your-domain.resend.app`)
-4. Note this address for testing
-
-### 5. Send a test email
-
-From any external email account (Gmail, Outlook, etc.), send an email to your generated inbound address.
-
-### 6. Verify the email
-
-1. Check the Resend webhook logs to confirm delivery
-2. Go to http://localhost:3000/dashboard/inbox
-3. The email should appear in your inbox
-4. Click to view the email (it will be marked as read)
-
-### 7. Verify database
-
-Check PostgreSQL to confirm the email was stored:
-```sql
-SELECT * FROM "IncomingEmail" WHERE "userId" = 'your-user-id';
-```
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 |
+| API | Next.js route handlers |
+| Auth | NextAuth.js v4 (credentials provider, JWT sessions), bcrypt |
+| Database | PostgreSQL on Supabase, Prisma 5 |
+| Email | Resend: outbound API and inbound webhooks (Svix signature verification) |
+| Validation | Zod |
+| Hosting | Vercel |
 
 ## Security
 
-- API keys encrypted with AES-256-GCM at rest
-- Never exposed to client or logs
-- User-scoped database queries
-- Rate limiting (10 emails/minute per user)
+- Resend API keys are encrypted at rest with **AES-256-GCM**. The key is derived from `ENCRYPTION_KEY` with PBKDF2 (100k iterations, SHA-256), with a random salt and IV per value.
+- Passwords are hashed with bcrypt.
+- Inbound webhooks are verified against `RESEND_WEBHOOK_SECRET` before anything is stored.
+- Database queries are scoped to the authenticated user.
+- Sending is rate limited to 10 emails per minute per user. This is an in-memory limiter, so on serverless it is best-effort per instance. Moving it to a shared store such as Redis is on the roadmap.
 
-## Development (v2 Stack)
+## Engineering notes
 
-The MailDesk v2 stack is built as a monorepo with npm workspaces and Turborepo. This is a walking skeleton implementation that provides the foundation for the multi-tenant platform.
+**Prisma on a serverless Postgres pooler.** The app runs on Vercel lambdas, so connections go through Supabase's transaction pooler (PgBouncer, port `6543`). Prisma uses named prepared statements, and in transaction mode two requests can collide on the same name, which surfaces as an intermittent `prepared statement "s0" already exists` error: a page that loads on one click and fails on the next. The fix is to tell Prisma a pooler is in the middle:
 
-### Prerequisites
-
-- Node.js 22
-- Docker and Docker Compose
-- npm 10.x
-
-### Local Development
-
-1. **Start the development stack:**
-```bash
-docker compose -f docker-compose.dev.yml up
+```
+DATABASE_URL = ...pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=3
+DIRECT_URL   = ...pooler.supabase.com:5432/postgres
 ```
 
-This brings up:
-- PostgreSQL 17
-- Redis 7
-- MinIO (S3-compatible object storage)
-- Mailpit (email testing)
-- Fastify API (port 4000)
-- BullMQ Worker
-- Next.js Web App (port 3000)
-- Bull Board (queue monitoring, port 3001)
+`DATABASE_URL` serves runtime queries. `DIRECT_URL` (session mode) is used for migrations, which need a real session. See `prisma.config.ts`.
 
-2. **Run database migrations:**
+## Getting started
+
+Requires Node.js 22 and a PostgreSQL database (a local one, or a free Supabase project).
+
 ```bash
-npm run db:migrate
+npm ci
+cp .env.example .env      # then fill in the values below
+npx prisma migrate dev
+npx prisma generate
+npm run dev:legacy
 ```
 
-3. **Seed the database:**
+Open http://localhost:3000. Note: this is the v1 app, so use `dev:legacy`. Plain `npm run dev` starts the v2 workspace via Turborepo.
+
+### Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Runtime database URL. On Supabase use the **transaction pooler** (`:6543`) with `?pgbouncer=true&connection_limit=3`. Locally, a plain Postgres URL is fine. |
+| `DIRECT_URL` | Used for migrations. Supabase session pooler / direct connection (`:5432`). Optional locally. |
+| `AUTH_SECRET` | Session signing secret (`openssl rand -base64 32`) |
+| `ENCRYPTION_KEY` | Key material for encrypting users' Resend API keys (`openssl rand -base64 32`) |
+| `NEXT_PUBLIC_APP_URL` | Public base URL, e.g. `http://localhost:3000` |
+| `RESEND_API_KEY` | **MailDesk's own** Resend key, used for inbound email. Separate from users' encrypted keys used for outbound sending. |
+| `RESEND_WEBHOOK_SECRET` | Signing secret from the Resend webhook (`whsec_...`) |
+| `MAILDESK_INBOUND_DOMAIN` | Domain used to generate inbound addresses |
+
+### Testing inbound email locally
+
+Resend has to reach your machine to deliver webhooks, so expose the dev server:
+
 ```bash
-npm run db:seed
+ngrok http 3000
+# or
+cloudflared tunnel --url http://localhost:3000
 ```
 
-4. **Run tests:**
+1. In [Resend Webhooks](https://resend.com/webhooks), add `https://<your-tunnel>/api/webhooks/resend` and select the `email.received` event.
+2. Copy the signing secret into `RESEND_WEBHOOK_SECRET`.
+3. Sign up at `/signup`. The response includes your inbound address (for example `username-abc123@your-domain.resend.app`).
+4. Send an email to that address from any external account.
+5. It should appear at `/dashboard/inbox`. Opening it marks it as read.
+
+## Deployment
+
+Deployed on Vercel (`vercel.json`: `prisma generate && npm run build:legacy`). Set all environment variables above in the project settings. After changing them, **redeploy**, because a running deployment keeps the values it was built with.
+
+Database migrations are **not** run automatically on deploy. Apply them yourself against `DIRECT_URL`:
+
 ```bash
-npm run test              # Unit tests
-npm run test:integration  # Integration tests
+npx prisma migrate deploy
 ```
 
-5. **Type checking and linting:**
-```bash
-npm run typecheck
-npm run lint
-```
+## Roadmap
 
-### Services
+A v2 rebuild is underway as a Turborepo monorepo: a Fastify API, a BullMQ worker on Redis, PostgreSQL with Drizzle, and structured logging and metrics. It is a walking skeleton today and is not part of the deployed app. The goals are multi-tenant isolation, queued sending with retries, and a shared rate limiter.
 
-- **API:** http://localhost:4000
-  - Health check: `GET /healthz`
-  - Readiness check: `GET /readyz`
-  - Metrics: `GET /metrics`
-  - Dev noop job: `POST /_dev/noop` (dev only)
-
-- **Web:** http://localhost:3000
-- **Bull Board:** http://localhost:3001
-- **Mailpit:** http://localhost:8025
-
-### Architecture
-
-- **Monorepo:** npm workspaces + Turborepo
-- **API:** Fastify 5 with TypeScript
-- **Worker:** BullMQ on Redis
-- **Database:** PostgreSQL with Drizzle ORM
-- **Observability:** pino logging, prom-client metrics
-- **Testing:** Vitest with Testcontainers
-
-See `docs/architecture/` for detailed architecture documentation.
+- Local setup for v2: [`docs/v2-development.md`](docs/v2-development.md)
+- Design docs: [`docs/architecture/`](docs/architecture/)
 
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
