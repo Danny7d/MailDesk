@@ -26,16 +26,17 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/mocker": "^5.0.3",
     "dependency-cruiser": "^16.6.0",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
+    "eslint-config-next": "^16.3.8",
     "tailwindcss": "^4",
     "turbo": "^2.4.0",
     "typescript": "^5",
-    "vitest": "^3.0.0"
+    "vitest": "^5.0.3"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=22"
   },
   "packageManager": "npm@11.9.0",
   "dependencies": {
@@ -44,7 +45,7 @@
     "bcryptjs": "^3.0.3",
     "claude": "^0.1.1",
     "framer-motion": "^13.4.1",
-    "next": "^16.3.6",
+    "next": "^16.3.8",
     "next-auth": "^4.24.15",
     "prisma": "^5.20.0",
     "react": "^19.3.0",
