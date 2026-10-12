@@ -212,5 +212,5 @@ MIT © [Daniel Tadesse](https://github.com/Danny7d)
 ---
 
 <p align="center">
-  Built with ❤️ in Addis Ababa 🇪🇹
+  Built with ❤️ by <a href="https://github.com/Danny7d">Danny</a>
 </p>
