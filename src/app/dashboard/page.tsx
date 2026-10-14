@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
+import { LocalDateTime } from '@/components/LocalDateTime';
 import Link from 'next/link';
 
 export default async function DashboardPage() {
@@ -9,19 +10,14 @@ export default async function DashboardPage() {
     return null;
   }
 
-  // Get all emails for the user
   const emails = await prisma.email.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
   });
 
-  // Get user's email count
   const emailCount = emails.length;
-
-  // Get recent emails
   const recentEmails = emails.slice(0, 5);
 
-  // Check if user has connected Resend
   const connectedProvider = await prisma.connectedProvider.findFirst({
     where: {
       userId: session.user.id,
@@ -34,10 +30,11 @@ export default async function DashboardPage() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back, {session.user?.name || session.user?.email || 'User'}</p>
+        <p className="text-gray-600 mt-2">
+          Welcome back, {session.user?.name || session.user?.email || 'User'}
+        </p>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900">Emails Sent</h3>
@@ -45,7 +42,11 @@ export default async function DashboardPage() {
         </div>
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h3 className="text-lg font-semibold text-gray-900">Resend Status</h3>
-          <p className={`text-lg font-medium mt-2 ${connectedProvider ? 'text-green-600' : 'text-gray-600'}`}>
+          <p
+            className={`text-lg font-medium mt-2 ${
+              connectedProvider ? 'text-green-600' : 'text-gray-600'
+            }`}
+          >
             {connectedProvider ? 'Connected ✓' : 'Not connected'}
           </p>
         </div>
@@ -60,7 +61,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent Emails */}
       <div className="bg-white rounded-lg border border-gray-200">
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Recent Emails</h2>
@@ -69,7 +69,12 @@ export default async function DashboardPage() {
           <div className="p-12 text-center">
             <div className="text-gray-400 mb-4">
               <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No emails sent yet</h3>
@@ -92,16 +97,21 @@ export default async function DashboardPage() {
                     <p className="text-sm text-gray-600">{email.subject}</p>
                   </div>
                   <div className="text-right">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                      email.status === 'sent' ? 'bg-green-100 text-green-800' :
-                      email.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
-                      email.status === 'failed' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                        email.status === 'sent'
+                          ? 'bg-green-100 text-green-800'
+                          : email.status === 'delivered'
+                            ? 'bg-blue-100 text-blue-800'
+                            : email.status === 'failed'
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {email.status}
                     </span>
                     <p className="text-xs text-gray-500 mt-1">
-                      {new Date(email.createdAt).toLocaleDateString()}
+                      <LocalDateTime date={email.createdAt} mode="date" />
                     </p>
                   </div>
                 </div>
@@ -111,7 +121,6 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Connect Resend CTA if not connected */}
       {!connectedProvider && (
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">Connect your Resend account</h3>

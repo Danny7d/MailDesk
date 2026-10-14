@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
+import { LocalDateTime } from '@/components/LocalDateTime';
 import Link from 'next/link';
 
 export default async function SentPage() {
@@ -9,7 +10,6 @@ export default async function SentPage() {
     return null;
   }
 
-  // Get all emails for the user
   const emails = await prisma.email.findMany({
     where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
@@ -27,7 +27,12 @@ export default async function SentPage() {
           <div className="p-12 text-center">
             <div className="text-gray-400 mb-4">
               <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">No emails sent yet</h3>
@@ -75,17 +80,22 @@ export default async function SentPage() {
                       <div className="text-sm text-gray-500">{email.sender}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        email.status === 'sent' ? 'bg-green-100 text-green-800' :
-                        email.status === 'delivered' ? 'bg-blue-100 text-blue-800' :
-                        email.status === 'failed' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span
+                        className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          email.status === 'sent'
+                            ? 'bg-green-100 text-green-800'
+                            : email.status === 'delivered'
+                              ? 'bg-blue-100 text-blue-800'
+                              : email.status === 'failed'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
                         {email.status}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(email.createdAt).toLocaleString()}
+                      <LocalDateTime date={email.createdAt} mode="datetime" />
                     </td>
                   </tr>
                 ))}

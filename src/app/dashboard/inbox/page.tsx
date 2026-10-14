@@ -2,6 +2,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { decrypt, validateEncryptionSecret } from '@/lib/encryption';
 import { getSenderIdentities } from '@/lib/resend';
+import { LocalDateTime } from '@/components/LocalDateTime';
 import { IncomingEmail } from '@prisma/client';
 import Link from 'next/link';
 
@@ -23,7 +24,6 @@ export default async function InboxPage() {
 
   const inboundReady = connections.some((c) => c.inboundEnabled);
 
-  // Prefer live domains from the API key; fall back to EmailAddress rows
   let receivingDomains: string[] = [];
   const encryptionSecret = process.env.ENCRYPTION_KEY;
   if (connections.length > 0 && validateEncryptionSecret(encryptionSecret)) {
@@ -32,7 +32,7 @@ export default async function InboxPage() {
       const identities = await getSenderIdentities(apiKey);
       receivingDomains = identities.map((i) => i.email.toLowerCase());
     } catch {
-      // ignore — fall through to EmailAddress
+      // fall through to EmailAddress
     }
   }
 
@@ -179,13 +179,10 @@ export default async function InboxPage() {
                     </div>
                     <div className="ml-4 flex-shrink-0 text-right">
                       <p className="text-xs text-gray-500">
-                        {new Date(email.receivedAt).toLocaleDateString()}
+                        <LocalDateTime date={email.receivedAt} mode="date" />
                       </p>
                       <p className="text-xs text-gray-400">
-                        {new Date(email.receivedAt).toLocaleTimeString([], {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        <LocalDateTime date={email.receivedAt} mode="time" />
                       </p>
                     </div>
                   </div>

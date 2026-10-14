@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
+import { LocalDateTime } from '@/components/LocalDateTime';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 
@@ -16,7 +17,6 @@ export default async function EmailViewPage({
 
   const { id } = await params;
 
-  // Get the email with user authorization check
   const email = await prisma.incomingEmail.findFirst({
     where: {
       id,
@@ -28,7 +28,6 @@ export default async function EmailViewPage({
     notFound();
   }
 
-  // Mark as read if not already read
   if (email.readAt === null) {
     await prisma.incomingEmail.update({
       where: { id },
@@ -36,7 +35,6 @@ export default async function EmailViewPage({
     });
   }
 
-  // Format recipient list
   const recipients = email.to.join(', ');
   const ccList = email.cc.length > 0 ? email.cc.join(', ') : null;
 
@@ -55,7 +53,6 @@ export default async function EmailViewPage({
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        {/* Email Header */}
         <div className="px-6 py-4 border-b border-gray-200">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
             {email.subject || '(No subject)'}
@@ -82,13 +79,12 @@ export default async function EmailViewPage({
             <div className="flex">
               <span className="text-gray-500 w-16 flex-shrink-0">Date:</span>
               <span className="text-gray-900">
-                {new Date(email.receivedAt).toLocaleString()}
+                <LocalDateTime date={email.receivedAt} mode="datetime" />
               </span>
             </div>
           </div>
         </div>
 
-        {/* Email Body */}
         <div className="px-6 py-6">
           {email.htmlBody ? (
             <div
