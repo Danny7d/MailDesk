@@ -1,5 +1,7 @@
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
+import { decrypt, validateEncryptionSecret } from '@/lib/encryption';
+import { getSenderIdentities } from '@/lib/resend';
 import { IncomingEmail } from '@prisma/client';
 import Link from 'next/link';
 
@@ -19,12 +21,30 @@ export default async function InboxPage() {
     orderBy: { createdAt: 'asc' },
   });
 
-  const receivingDomains = connections
-    .map((c) => c.domain)
-    .filter((d) => d && d !== '*')
-    .map((d) => d.toLowerCase());
-
   const inboundReady = connections.some((c) => c.inboundEnabled);
+
+  // Prefer live domains from the API key; fall back to EmailAddress rows
+  let receivingDomains: string[] = [];
+  const encryptionSecret = process.env.ENCRYPTION_KEY;
+  if (connections.length > 0 && validateEncryptionSecret(encryptionSecret)) {
+    try {
+      const apiKey = decrypt(connections[0].encryptedKey, encryptionSecret!);
+      const identities = await getSenderIdentities(apiKey);
+      receivingDomains = identities.map((i) => i.email.toLowerCase());
+    } catch {
+      // ignore — fall through to EmailAddress
+    }
+  }
+
+  if (receivingDomains.length === 0) {
+    const addresses = await prisma.emailAddress.findMany({
+      where: { userId: session.user.id },
+      select: { domain: true },
+    });
+    receivingDomains = [...new Set(addresses.map((a) => a.domain.toLowerCase()))].filter(
+      (d) => d && d !== '*'
+    );
+  }
 
   const emails = await prisma.incomingEmail.findMany({
     where: { userId: session.user.id },
@@ -64,13 +84,13 @@ export default async function InboxPage() {
             </div>
             {!inboundReady && (
               <p className="mt-1 text-xs text-amber-700">
-                Webhook not fully set up — check Settings / Resend.
+                Webhook not fully set up — reconnect Resend in Settings if needed.
               </p>
             )}
           </div>
         ) : (
           <div className="bg-amber-50 border border-amber-200 text-amber-900 px-3.5 py-2 rounded-lg text-sm">
-            Connect a Resend domain in{' '}
+            Connect a Resend API key in{' '}
             <Link href="/dashboard/settings" className="underline font-medium">
               Settings
             </Link>{' '}
@@ -95,8 +115,7 @@ export default async function InboxPage() {
             <h3 className="text-lg font-medium text-gray-900 mb-2">No emails yet</h3>
             {receivingDomains.length > 0 ? (
               <p className="text-gray-600 mb-4 max-w-md mx-auto">
-                Send mail to any address on your connected domain
-                {receivingDomains.length > 1 ? 's' : ''}{' '}
+                Send mail to any address on{' '}
                 {receivingDomains.map((d) => (
                   <strong key={d} className="text-gray-800 font-mono">
                     *@{d}{' '}
@@ -106,7 +125,7 @@ export default async function InboxPage() {
               </p>
             ) : (
               <p className="text-gray-600 mb-4">
-                Connect your Resend API key and domain in Settings to receive email here.
+                Connect your Resend API key in Settings to receive email here.
               </p>
             )}
             <Link

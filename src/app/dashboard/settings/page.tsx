@@ -12,7 +12,6 @@ type ResendConnection = {
 
 export default function SettingsPage() {
   const [apiKey, setApiKey] = useState('');
-  const [domain, setDomain] = useState('');
   const [connections, setConnections] = useState<ResendConnection[]>([]);
   const [senderIdentities, setSenderIdentities] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -45,7 +44,7 @@ export default function SettingsPage() {
       const response = await fetch('/api/providers/resend/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey, domain }),
+        body: JSON.stringify({ apiKey }),
       });
       const data = await response.json();
 
@@ -56,8 +55,12 @@ export default function SettingsPage() {
 
       await refreshConnections();
       setApiKey('');
-      setDomain('');
-      setSuccess(`Resend key saved for ${data.domain}.`);
+      const domains: string[] = data.senderIdentities || [];
+      setSuccess(
+        domains.length > 0
+          ? `Resend connected. Domains found: ${domains.join(', ')}. Pick the From domain when you compose.`
+          : 'Resend key saved.'
+      );
       if (data.inboundNote) setInboundNote(data.inboundNote);
     } catch {
       setError('Something went wrong while saving the Resend key.');
@@ -81,7 +84,7 @@ export default function SettingsPage() {
 
       setConnections([]);
       setSenderIdentities([]);
-      setSuccess('All Resend keys were removed.');
+      setSuccess('Resend was disconnected.');
     } catch {
       setError('Something went wrong while disconnecting Resend.');
     } finally {
@@ -89,17 +92,19 @@ export default function SettingsPage() {
     }
   }
 
+  const isConnected = connections.length > 0;
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600 mt-2">
-          Connect your Resend API key by domain. Sending and receiving both use your key.
+          Connect your Resend API key. Domains are detected automatically — choose From on the compose page.
         </p>
       </div>
 
       <section className="bg-white rounded-lg border border-gray-200 shadow-sm p-6 mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Resend connections</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Resend connection</h2>
 
         {success && (
           <p role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700">
@@ -117,39 +122,38 @@ export default function SettingsPage() {
           </p>
         )}
 
-        {connections.length > 0 ? (
+        {isConnected ? (
           <div className="mb-6">
-            <h3 className="mb-2 text-sm font-medium text-gray-700">Saved keys</h3>
-            <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-              {connections.map((connection, index) => (
-                <li
-                  key={`${connection.domain}-${index}`}
-                  className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <span className="font-medium text-gray-900">
-                    {connection.legacy ? 'Legacy account-wide key' : connection.domain}
-                  </span>
-                  <span className="text-sm text-gray-500">
-                    {connection.legacy
-                      ? `Fallback for ${connection.senders.join(', ') || 'available domains'}`
-                      : 'Encrypted key saved'}
-                    {connection.inboundEnabled ? ' · Inbound webhook active' : ''}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {senderIdentities.length > 0 && (
-              <p className="mt-2 text-xs text-gray-500">
-                Available domains: {senderIdentities.join(', ')}
+            <div className="rounded-lg border border-gray-200 px-4 py-3">
+              <p className="font-medium text-gray-900">Connected</p>
+              <p className="text-sm text-gray-500 mt-1">
+                {connections.some((c) => c.inboundEnabled)
+                  ? 'Inbound webhook active · '
+                  : ''}
+                Domains from your key:
               </p>
-            )}
+              {senderIdentities.length > 0 ? (
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {senderIdentities.map((d) => (
+                    <li
+                      key={d}
+                      className="rounded-full bg-gray-100 px-3 py-1 text-sm font-mono text-gray-800"
+                    >
+                      {d}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-1 text-sm text-gray-500">No domains returned for this key.</p>
+              )}
+            </div>
             <button
               type="button"
               onClick={handleDisconnect}
               disabled={loading}
               className="mt-4 rounded-md px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
             >
-              Remove all Resend keys
+              Disconnect Resend
             </button>
           </div>
         ) : (
@@ -157,25 +161,13 @@ export default function SettingsPage() {
         )}
 
         <form onSubmit={handleConnect} className="border-t border-gray-200 pt-6">
-          <h3 className="text-base font-semibold text-gray-900">Add or replace a domain key</h3>
+          <h3 className="text-base font-semibold text-gray-900">
+            {isConnected ? 'Replace API key' : 'Connect Resend'}
+          </h3>
           <p className="mt-1 mb-4 text-sm text-gray-600">
-            Keys are encrypted. We also create an <code className="text-xs bg-gray-100 px-1 rounded">email.received</code>{' '}
-            webhook in your Resend account so inbound mail can reach MailDesk.
+            Paste your key only. We load every verified domain from Resend. Pick which domain to send
+            from on the <strong>Compose</strong> page.
           </p>
-
-          <label htmlFor="domain" className="mb-2 block text-sm font-medium text-gray-700">
-            Domain
-          </label>
-          <input
-            id="domain"
-            type="text"
-            required
-            value={domain}
-            onChange={(event) => setDomain(event.target.value)}
-            placeholder="example.com"
-            autoComplete="off"
-            className="mb-4 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
 
           <label htmlFor="apiKey" className="mb-2 block text-sm font-medium text-gray-700">
             Resend API key
@@ -191,38 +183,38 @@ export default function SettingsPage() {
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Domain must exist in your{' '}
-            <a
-              href="https://resend.com/domains"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700"
-            >
-              Resend account
-            </a>
-            . Create keys on the{' '}
+            Create keys in the{' '}
             <a
               href="https://resend.com/api-keys"
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-700"
             >
-              API keys page
+              Resend API keys page
+            </a>
+            . Domains must already be added under{' '}
+            <a
+              href="https://resend.com/domains"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700"
+            >
+              Domains
             </a>
             .
           </p>
           <button
             type="submit"
-            disabled={loading || !apiKey.trim() || !domain.trim()}
+            disabled={loading || !apiKey.trim()}
             className="mt-4 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {loading ? 'Saving key…' : 'Save key for domain'}
+            {loading ? 'Connecting…' : isConnected ? 'Replace key' : 'Connect Resend'}
           </button>
         </form>
       </section>
 
       <section className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Receiving setup (required once per domain)</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Receiving setup (once per domain)</h2>
         <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700">
           <li>
             In{' '}
@@ -234,13 +226,13 @@ export default function SettingsPage() {
             >
               Resend → Domains
             </a>
-            , open your domain and enable <strong>Receiving</strong>.
+            , open each domain and enable <strong>Receiving</strong>.
           </li>
-          <li>Add the MX record Resend shows to your DNS provider and wait until it is verified.</li>
+          <li>Add the MX record Resend shows and wait until it is verified.</li>
           <li>
             After you connect the key above, MailDesk creates the{' '}
-            <code className="text-xs bg-gray-100 px-1 rounded">email.received</code> webhook for you
-            (needs <code className="text-xs bg-gray-100 px-1 rounded">NEXT_PUBLIC_APP_URL</code> as
+            <code className="text-xs bg-gray-100 px-1 rounded">email.received</code> webhook
+            (requires <code className="text-xs bg-gray-100 px-1 rounded">NEXT_PUBLIC_APP_URL</code> as
             https).
           </li>
           <li>
@@ -249,8 +241,8 @@ export default function SettingsPage() {
           </li>
         </ol>
         <p className="mt-3 text-xs text-gray-500">
-          You cannot receive at Gmail/Outlook addresses. Only domains verified for receiving in your
-          Resend account work.
+          Only domains verified for receiving in your Resend account work. Gmail/Outlook addresses
+          cannot receive through MailDesk.
         </p>
       </section>
     </div>

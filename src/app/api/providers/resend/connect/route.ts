@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
-import { encrypt, validateEncryptionSecret } from '@/lib/encryption';
+import { encrypt, decrypt, validateEncryptionSecret } from '@/lib/encryption';
 import {
   validateResendApiKey,
   getSenderIdentities,
   createInboundWebhook,
   enableDomainReceiving,
+  deleteWebhook,
 } from '@/lib/resend';
 import { z } from 'zod';
 
 const connectSchema = z.object({
   apiKey: z.string().trim().min(1, 'API key is required'),
-  domain: z.string().trim().toLowerCase().min(1, 'Domain is required').optional(),
 });
 
 export async function POST(request: Request) {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { apiKey, domain } = connectSchema.parse(body);
+    const { apiKey } = connectSchema.parse(body);
 
     const encryptionSecret = process.env.ENCRYPTION_KEY;
     if (!validateEncryptionSecret(encryptionSecret)) {
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Discover every domain available to this key — user never types a domain here
     const senderIdentities = await getSenderIdentities(apiKey);
 
     if (senderIdentities.length === 0) {
@@ -55,71 +56,61 @@ export async function POST(request: Request) {
       );
     }
 
-    const requestedDomain = domain?.replace(/^@/, '');
-    if (domain && !requestedDomain) {
-      return NextResponse.json({ error: 'Enter a valid sending domain' }, { status: 400 });
-    }
-    if (
-      requestedDomain &&
-      !senderIdentities.some((identity) => identity.email.toLowerCase() === requestedDomain)
-    ) {
-      return NextResponse.json(
-        { error: 'That domain is not available for this Resend API key' },
-        { status: 400 }
-      );
-    }
-
+    const domains = senderIdentities.map((s) => s.email.toLowerCase());
     const encryptedKey = encrypt(apiKey, encryptionSecret!);
-    const domainValue = requestedDomain || '*';
 
-    const existingProvider = await prisma.connectedProvider.findFirst({
+    // Remove any previous Resend connections for this user (and their webhooks)
+    const existingProviders = await prisma.connectedProvider.findMany({
       where: {
         userId: session.user.id,
         provider: 'resend',
-        domain: domainValue,
       },
     });
 
-    let providerId: string;
-
-    if (existingProvider) {
-      const updated = await prisma.connectedProvider.update({
-        where: { id: existingProvider.id },
-        data: {
-          encryptedKey,
-          status: 'connected',
-          domain: domainValue,
-        },
-      });
-      providerId = updated.id;
-    } else {
-      const created = await prisma.connectedProvider.create({
-        data: {
-          userId: session.user.id,
-          provider: 'resend',
-          domain: domainValue,
-          encryptedKey,
-          status: 'connected',
-        },
-      });
-      providerId = created.id;
+    for (const existing of existingProviders) {
+      if (existing.webhookId && existing.encryptedKey) {
+        try {
+          const oldKey = decrypt(existing.encryptedKey, encryptionSecret!);
+          await deleteWebhook(oldKey, existing.webhookId);
+        } catch (e) {
+          console.error('Failed to delete old Resend webhook:', e);
+        }
+      }
     }
 
-    // Register EmailAddress rows for the domain(s) so routing is explicit
-    const domainsToRegister =
-      domainValue === '*'
-        ? senderIdentities.map((s) => s.email.toLowerCase())
-        : [domainValue];
+    if (existingProviders.length > 0) {
+      await prisma.connectedProvider.deleteMany({
+        where: {
+          userId: session.user.id,
+          provider: 'resend',
+        },
+      });
+    }
 
-    for (const d of domainsToRegister) {
-      const existingAddr = await prisma.emailAddress.findUnique({ where: { email: `*@${d}` } });
-      // Store a domain-level marker as localpart * for documentation; real routing uses domain match
+    // One account-wide key; domains are chosen only on Compose "From"
+    const created = await prisma.connectedProvider.create({
+      data: {
+        userId: session.user.id,
+        provider: 'resend',
+        domain: '*',
+        encryptedKey,
+        status: 'connected',
+      },
+    });
+    const providerId = created.id;
+
+    // Register each discovered domain for inbox routing / display
+    for (const d of domains) {
+      const markerEmail = `inbound@${d}`;
+      const existingAddr = await prisma.emailAddress.findUnique({
+        where: { email: markerEmail },
+      });
       if (!existingAddr) {
         await prisma.emailAddress
           .create({
             data: {
               userId: session.user.id,
-              email: `inbound@${d}`,
+              email: markerEmail,
               domain: d,
               verified: true,
             },
@@ -127,6 +118,9 @@ export async function POST(request: Request) {
           .catch(() => {
             /* unique race */
           });
+      } else if (existingAddr.userId !== session.user.id) {
+        // Domain already claimed by another MailDesk user — skip quietly
+        console.warn(`EmailAddress ${markerEmail} already owned by another user`);
       }
     }
 
@@ -151,18 +145,14 @@ export async function POST(request: Request) {
         });
         inboundEnabled = true;
 
-        // Best-effort: enable receiving capability on the domain(s)
         for (const identity of senderIdentities) {
-          if (
-            identity.domainId &&
-            (domainValue === '*' || identity.email.toLowerCase() === domainValue)
-          ) {
+          if (identity.domainId) {
             await enableDomainReceiving(apiKey, identity.domainId);
           }
         }
 
         inboundNote =
-          'Inbound webhook created. Enable receiving + add the MX record for your domain in the Resend dashboard so mail can be delivered.';
+          'Inbound webhook created. In Resend, enable Receiving and add the MX record for each domain you want to receive on.';
       } else {
         inboundNote =
           webhookResult.error ||
@@ -175,8 +165,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       message: 'Resend connected successfully',
-      senderIdentities: senderIdentities.map((s) => s.email),
-      domain: domainValue,
+      senderIdentities: domains,
+      domain: '*',
       inboundEnabled,
       inboundNote,
       providerId,
