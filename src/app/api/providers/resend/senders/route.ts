@@ -12,7 +12,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Return available domains from every saved key without exposing key data.
     const providers = await prisma.connectedProvider.findMany({
       where: {
         userId: session.user.id,
@@ -26,7 +25,6 @@ export async function GET() {
       return NextResponse.json({ senders: [], connections: [] });
     }
 
-    // Validate encryption secret
     const encryptionSecret = process.env.ENCRYPTION_KEY;
     if (!validateEncryptionSecret(encryptionSecret)) {
       console.error('Encryption secret is not configured');
@@ -36,18 +34,22 @@ export async function GET() {
       );
     }
 
-    const connections = await Promise.all(providers.map(async (provider) => {
-      const apiKey = decrypt(provider.encryptedKey, encryptionSecret!);
-      const identities = await getSenderIdentities(apiKey);
-      const availableDomains = identities.map((identity) => identity.email.toLowerCase());
-      const domain = provider.domain === '*' ? '*' : provider.domain.toLowerCase();
+    const connections = await Promise.all(
+      providers.map(async (provider) => {
+        const apiKey = decrypt(provider.encryptedKey, encryptionSecret!);
+        const identities = await getSenderIdentities(apiKey);
+        const availableDomains = identities.map((identity) => identity.email.toLowerCase());
+        const domain = provider.domain === '*' ? '*' : provider.domain.toLowerCase();
 
-      return {
-        domain,
-        legacy: domain === '*',
-        senders: domain === '*' ? availableDomains : [domain],
-      };
-    }));
+        return {
+          domain,
+          legacy: domain === '*',
+          senders: domain === '*' ? availableDomains : [domain],
+          inboundEnabled: provider.inboundEnabled,
+          providerId: provider.id,
+        };
+      })
+    );
 
     const formattedSenders = [...new Set(connections.flatMap((connection) => connection.senders))];
     return NextResponse.json({ senders: formattedSenders, connections });
