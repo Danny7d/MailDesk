@@ -29,14 +29,17 @@ model User {
 }
 
 model ConnectedProvider {
-  id           String   @id @default(cuid())
-  userId       String
-  provider     String   // "resend", "sendgrid", etc.
-  domain       String   @default("*") // Domain assigned to this key; * keeps legacy account-wide keys working
-  encryptedKey String   // Encrypted API key
-  status       String   // "connected", "disconnected", "error"
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  userId                  String
+  provider                String   // "resend", "sendgrid", etc.
+  domain                  String   @default("*") // Domain assigned to this key; * keeps legacy account-wide keys working
+  encryptedKey            String   // Encrypted API key
+  status                  String   // "connected", "disconnected", "error"
+  webhookId               String?  // Resend webhook id for inbound (per-user)
+  encryptedWebhookSecret  String?  // Encrypted Svix signing secret for this webhook
+  inboundEnabled          Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
   
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   

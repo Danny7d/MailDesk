@@ -3,11 +3,20 @@ import { Resend } from 'resend';
 export interface SenderIdentity {
   email: string;
   name?: string;
+  domainId?: string;
+  receivingEnabled?: boolean;
 }
 
 export interface SendEmailResult {
   success: boolean;
   messageId?: string;
+  error?: string;
+}
+
+export interface CreateInboundWebhookResult {
+  success: boolean;
+  webhookId?: string;
+  signingSecret?: string;
   error?: string;
 }
 
@@ -17,7 +26,6 @@ export interface SendEmailResult {
 export async function validateResendApiKey(apiKey: string): Promise<boolean> {
   try {
     const resend = new Resend(apiKey);
-    // Try to retrieve domains to validate the key
     await resend.domains.list({ limit: 1 });
     return true;
   } catch (error) {
@@ -27,24 +35,24 @@ export async function validateResendApiKey(apiKey: string): Promise<boolean> {
 }
 
 /**
- * Retrieves available sender identities (domains and verified senders)
- * from the user's Resend account
+ * Retrieves available sender identities (domains) from the user's Resend account
  */
 export async function getSenderIdentities(apiKey: string): Promise<SenderIdentity[]> {
   try {
     const resend = new Resend(apiKey);
     const senders: SenderIdentity[] = [];
 
-    // Get verified domains
     const { data: domainsResponse } = await resend.domains.list();
     if (domainsResponse && domainsResponse.data) {
       for (const domain of domainsResponse.data) {
-        // Resend allows sending from any email address at a verified domain
-        // We return the domain name so users can construct their preferred sender
-        // e.g., "info@example.com", "support@example.com", etc.
+        const receiving =
+          (domain as { capabilities?: { receiving?: string } }).capabilities?.receiving ===
+          'enabled';
         senders.push({
           email: domain.name,
           name: domain.name,
+          domainId: domain.id,
+          receivingEnabled: receiving,
         });
       }
     }
@@ -57,33 +65,111 @@ export async function getSenderIdentities(apiKey: string): Promise<SenderIdentit
 }
 
 /**
+ * Create an email.received webhook in the user's Resend account.
+ * Endpoint should be unique per connection, e.g. /api/webhooks/resend/{providerId}
+ */
+export async function createInboundWebhook(
+  apiKey: string,
+  endpoint: string
+): Promise<CreateInboundWebhookResult> {
+  try {
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.webhooks.create({
+      endpoint,
+      events: ['email.received'],
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return {
+      success: true,
+      webhookId: data?.id,
+      signingSecret: data?.signing_secret,
+    };
+  } catch (error) {
+    console.error('Failed to create Resend webhook:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Delete a webhook from the user's Resend account (best-effort on disconnect).
+ */
+export async function deleteWebhook(
+  apiKey: string,
+  webhookId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.webhooks.remove(webhookId);
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to delete Resend webhook:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Try to enable receiving capability on a domain (user must still add MX records).
+ */
+export async function enableDomainReceiving(
+  apiKey: string,
+  domainId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const resend = new Resend(apiKey);
+    const { error } = await resend.domains.update({
+      id: domainId,
+      capabilities: {
+        receiving: 'enabled',
+      },
+    });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to enable domain receiving:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
  * Formats a plain text or HTML message into clean email HTML,
  * preserving paragraphs, line breaks, and spacing across all email clients.
  */
 export function formatEmailHtml(message: string): string {
   if (!message) return '';
 
-  // If already a full HTML document, leave it as is
   if (/<!DOCTYPE|<html|<body/i.test(message)) {
     return message;
   }
 
-  // If the message already contains HTML block/break elements, preserve it
   if (/<(p|br|div|table|h[1-6])\b/i.test(message)) {
     return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: #111827;">${message}</div>`;
   }
 
-  // Normalize Windows CRLF and CR to LF
   const normalized = message.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-
-  // Split into paragraphs separated by two or more newlines
   const paragraphs = normalized.split(/\n{2,}/);
 
   const formattedParagraphs = paragraphs
     .map((para) => para.trim())
     .filter((para) => para.length > 0)
     .map((para) => {
-      // Convert single newlines within a paragraph into <br /> tags
       const withBreaks = para.replace(/\n/g, '<br />');
       return `<p style="margin: 0 0 16px 0; margin-top: 0; line-height: 1.6;">${withBreaks}</p>`;
     });
@@ -153,7 +239,6 @@ export async function getEmailStatus(
       };
     }
 
-    // Map Resend status to our internal status
     let status = 'sent';
     if (data?.last_event) {
       switch (data.last_event) {

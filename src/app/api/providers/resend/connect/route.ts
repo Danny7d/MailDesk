@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { encrypt, validateEncryptionSecret } from '@/lib/encryption';
-import { validateResendApiKey, getSenderIdentities } from '@/lib/resend';
+import {
+  validateResendApiKey,
+  getSenderIdentities,
+  createInboundWebhook,
+  enableDomainReceiving,
+} from '@/lib/resend';
 import { z } from 'zod';
 
 const connectSchema = z.object({
@@ -21,7 +26,6 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { apiKey, domain } = connectSchema.parse(body);
 
-    // Validate encryption secret
     const encryptionSecret = process.env.ENCRYPTION_KEY;
     if (!validateEncryptionSecret(encryptionSecret)) {
       console.error('Encryption secret is not configured');
@@ -31,7 +35,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate the API key with Resend
     const isValid = await validateResendApiKey(apiKey);
     if (!isValid) {
       return NextResponse.json(
@@ -40,13 +43,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get sender identities
     const senderIdentities = await getSenderIdentities(apiKey);
 
-    // Check if there are any domains
     if (senderIdentities.length === 0) {
       return NextResponse.json(
-        { error: 'No verified domains found in your Resend account. Please add and verify a domain in Resend before connecting.' },
+        {
+          error:
+            'No domains found in your Resend account. Add and verify a domain in Resend before connecting.',
+        },
         { status: 400 }
       );
     }
@@ -65,46 +69,117 @@ export async function POST(request: Request) {
       );
     }
 
-    // Encrypt the API key
     const encryptedKey = encrypt(apiKey, encryptionSecret!);
+    const domainValue = requestedDomain || '*';
 
-    // Keep one encrypted key per user/provider/domain. The legacy '*' slot
-    // remains available to clients that connect without choosing a domain.
     const existingProvider = await prisma.connectedProvider.findFirst({
       where: {
         userId: session.user.id,
         provider: 'resend',
-        domain: requestedDomain || '*',
+        domain: domainValue,
       },
     });
 
+    let providerId: string;
+
     if (existingProvider) {
-      // Update existing connection
-      await prisma.connectedProvider.update({
+      const updated = await prisma.connectedProvider.update({
         where: { id: existingProvider.id },
         data: {
           encryptedKey,
           status: 'connected',
-          domain: requestedDomain || '*',
+          domain: domainValue,
         },
       });
+      providerId = updated.id;
     } else {
-      // Create new connection
-      await prisma.connectedProvider.create({
+      const created = await prisma.connectedProvider.create({
         data: {
           userId: session.user.id,
           provider: 'resend',
-          domain: requestedDomain || '*',
+          domain: domainValue,
           encryptedKey,
           status: 'connected',
         },
       });
+      providerId = created.id;
+    }
+
+    // Register EmailAddress rows for the domain(s) so routing is explicit
+    const domainsToRegister =
+      domainValue === '*'
+        ? senderIdentities.map((s) => s.email.toLowerCase())
+        : [domainValue];
+
+    for (const d of domainsToRegister) {
+      const existingAddr = await prisma.emailAddress.findUnique({ where: { email: `*@${d}` } });
+      // Store a domain-level marker as localpart * for documentation; real routing uses domain match
+      if (!existingAddr) {
+        await prisma.emailAddress
+          .create({
+            data: {
+              userId: session.user.id,
+              email: `inbound@${d}`,
+              domain: d,
+              verified: true,
+            },
+          })
+          .catch(() => {
+            /* unique race */
+          });
+      }
+    }
+
+    // Create per-user inbound webhook in their Resend account
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || '').replace(/\/$/, '');
+    let inboundEnabled = false;
+    let inboundNote: string | undefined;
+
+    if (appUrl && appUrl.startsWith('https://')) {
+      const webhookEndpoint = `${appUrl}/api/webhooks/resend/${providerId}`;
+      const webhookResult = await createInboundWebhook(apiKey, webhookEndpoint);
+
+      if (webhookResult.success && webhookResult.webhookId && webhookResult.signingSecret) {
+        const encryptedWebhookSecret = encrypt(webhookResult.signingSecret, encryptionSecret!);
+        await prisma.connectedProvider.update({
+          where: { id: providerId },
+          data: {
+            webhookId: webhookResult.webhookId,
+            encryptedWebhookSecret,
+            inboundEnabled: true,
+          },
+        });
+        inboundEnabled = true;
+
+        // Best-effort: enable receiving capability on the domain(s)
+        for (const identity of senderIdentities) {
+          if (
+            identity.domainId &&
+            (domainValue === '*' || identity.email.toLowerCase() === domainValue)
+          ) {
+            await enableDomainReceiving(apiKey, identity.domainId);
+          }
+        }
+
+        inboundNote =
+          'Inbound webhook created. Enable receiving + add the MX record for your domain in the Resend dashboard so mail can be delivered.';
+      } else {
+        inboundNote =
+          webhookResult.error ||
+          'Could not create inbound webhook automatically. You can still send; for receiving, add a webhook in Resend pointing at this app.';
+      }
+    } else {
+      inboundNote =
+        'NEXT_PUBLIC_APP_URL must be a public https URL for automatic inbound webhooks. Set it and reconnect, or create the webhook manually in Resend.';
     }
 
     return NextResponse.json({
       message: 'Resend connected successfully',
       senderIdentities: senderIdentities.map((s) => s.email),
-      domain: requestedDomain || '*',
+      domain: domainValue,
+      inboundEnabled,
+      inboundNote,
+      providerId,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

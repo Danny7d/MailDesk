@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
-import crypto from 'crypto';
 
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -10,25 +9,11 @@ const signupSchema = z.object({
   name: z.string().optional(),
 });
 
-function generateInboundAddress(username: string): string {
-  const inboundDomain = process.env.MAILDESK_INBOUND_DOMAIN;
-  if (!inboundDomain) {
-    throw new Error('MAILDESK_INBOUND_DOMAIN environment variable is not configured');
-  }
-
-  // Generate a unique local part using crypto
-  const randomSuffix = crypto.randomBytes(4).toString('hex');
-  const localPart = `${username}-${randomSuffix}`.toLowerCase().replace(/[^a-z0-9-]/g, '-');
-
-  return `${localPart}@${inboundDomain}`;
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const validatedData = signupSchema.parse(body);
 
-    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email: validatedData.email },
     });
@@ -40,10 +25,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(validatedData.password, 12);
 
-    // Create user
     const user = await prisma.user.create({
       data: {
         email: validatedData.email,
@@ -52,57 +35,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // Generate inbound email address
-    const username = validatedData.name || validatedData.email.split('@')[0];
-    const inboundAddress = generateInboundAddress(username);
-    const inboundDomain = process.env.MAILDESK_INBOUND_DOMAIN!;
-    let finalInboundAddress = inboundAddress;
-
-    // Check if email address already exists (unlikely but possible due to collision)
-    const existingAddress = await prisma.emailAddress.findUnique({
-      where: { email: inboundAddress },
-    });
-
-    if (existingAddress) {
-      // Regenerate with a different suffix
-      const newInboundAddress = generateInboundAddress(username);
-      finalInboundAddress = newInboundAddress;
-      await prisma.emailAddress.create({
-        data: {
-          userId: user.id,
-          email: newInboundAddress,
-          domain: inboundDomain,
-          verified: true,
-        },
-      });
-    } else {
-      // Create EmailAddress record
-      await prisma.emailAddress.create({
-        data: {
-          userId: user.id,
-          email: inboundAddress,
-          domain: inboundDomain,
-          verified: true,
-        },
-      });
-    }
-
-    // Also register user's login email in EmailAddress
-    const userEmailNormalized = user.email.toLowerCase().trim();
-    const userEmailDomain = userEmailNormalized.split('@')[1] || inboundDomain;
-    const existingUserAddress = await prisma.emailAddress.findUnique({
-      where: { email: userEmailNormalized },
-    });
-    if (!existingUserAddress) {
-      await prisma.emailAddress.create({
-        data: {
-          userId: user.id,
-          email: userEmailNormalized,
-          domain: userEmailDomain,
-          verified: true,
-        },
-      }).catch((e: unknown) => console.error('Failed to register user login email address:', e));
-    }
+    // Inbound addresses come from domains the user connects via their Resend key.
+    // No platform-generated addresses or login-email registration.
 
     return NextResponse.json(
       {
@@ -111,8 +45,7 @@ export async function POST(request: Request) {
           id: user.id,
           email: user.email,
           name: user.name,
-          inboundAddress: finalInboundAddress,
-        }
+        },
       },
       { status: 201 }
     );
@@ -125,8 +58,6 @@ export async function POST(request: Request) {
     }
 
     console.error('Signup error:', error);
-    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error');
-    console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
     return NextResponse.json(
       { error: 'Failed to create account' },
       { status: 500 }
