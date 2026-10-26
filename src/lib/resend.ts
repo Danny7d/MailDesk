@@ -265,3 +265,23 @@ export async function getEmailStatus(
     };
   }
 }
+
+/**
+ * Fetches a previously sent email's content from Resend.
+ * Used to show the body of emails sent before MailDesk stored it locally.
+ */
+export async function getSentEmailContent(
+  apiKey: string,
+  messageId: string
+): Promise<{ text?: string; html?: string } | null> {
+  try {
+    const resend = new Resend(apiKey);
+    const { data, error } = await resend.emails.get(messageId);
+    if (error || !data) return null;
+    const d = data as { text?: string | null; html?: string | null };
+    return { text: d.text ?? undefined, html: d.html ?? undefined };
+  } catch (error) {
+    console.error('Failed to fetch sent email content:', error);
+    return null;
+  }
+}

@@ -57,3 +57,7 @@ next-env.d.ts
 # build caches and one-off patches
 .turbo
 *.patch
+
+# committed build output (v2 workspace)
+/apps/*/dist
+/packages/*/dist

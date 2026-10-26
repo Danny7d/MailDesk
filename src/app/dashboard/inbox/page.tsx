@@ -82,7 +82,7 @@ export default async function InboxPage() {
                 </span>
               ))}
             </div>
-            {!inboundReady && (
+            {!inboundReady && emails.length === 0 && (
               <p className="mt-1 text-xs text-amber-700">
                 Webhook not fully set up — reconnect Resend in Settings if needed.
               </p>

@@ -71,10 +71,20 @@ export default async function SentPage() {
                 {emails.map((email: any) => (
                   <tr key={email.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{email.recipient}</div>
+                      <Link
+                        href={`/dashboard/sent/${email.id}`}
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                      >
+                        {email.recipient}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{email.subject}</div>
+                      <Link
+                        href={`/dashboard/sent/${email.id}`}
+                        className="text-sm text-gray-900 hover:text-blue-600"
+                      >
+                        {email.subject}
+                      </Link>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">{email.sender}</div>
