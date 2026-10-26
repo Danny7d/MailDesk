@@ -1,0 +1,1 @@
+ALTER TABLE "Email" ADD COLUMN "cc" TEXT, ADD COLUMN "bcc" TEXT;

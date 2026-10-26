@@ -69,8 +69,9 @@ Perfect for solo founders, indie hackers, and small teams who want branded email
 ### Core Experience
 - **Connect your Resend account** — API key stored encrypted (AES-256-GCM), never sent to the browser
 - **All your domains, one key** — every verified domain in your Resend account shows up automatically in the composer
-- **Clean composer** — select verified domain + sender, write your email, hit send
+- **Clean composer** — select verified domain + sender, write your email, hit send; multiple recipients with Cc/Bcc
 - **Inbox** — receive email at generated inbound addresses via Resend webhooks (with read/unread state)
+- **Reply** — reply from the inbox with the original quoted and proper `In-Reply-To`/`References` threading headers
 - **Sent history** — every email you send is saved with its full content; click a row to read it
 - **User accounts** — email + password auth, fully multi-tenant
 

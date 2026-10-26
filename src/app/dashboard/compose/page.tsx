@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ComposePage() {
+function ComposeForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const replyToId = searchParams.get('replyTo');
   const [recipient, setRecipient] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
@@ -14,6 +16,33 @@ export default function ComposePage() {
   const [senderIdentities, setSenderIdentities] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState('');
   const [senderPrefix, setSenderPrefix] = useState('info');
+  const [cc, setCc] = useState('');
+  const [bcc, setBcc] = useState('');
+  const [showCcBcc, setShowCcBcc] = useState(false);
+  const [inReplyTo, setInReplyTo] = useState('');
+
+  // Prefill the form from an inbox email when replying
+  useEffect(() => {
+    if (!replyToId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/emails/reply/${encodeURIComponent(replyToId)}`);
+        if (!res.ok) return;
+        const ctx = await res.json();
+        if (cancelled) return;
+        setRecipient(ctx.to || '');
+        setSubject(ctx.subject || '');
+        setMessage(ctx.quote ? `\n\n${ctx.quote}` : '');
+        setInReplyTo(ctx.inReplyTo || '');
+      } catch {
+        console.error('Failed to load reply context');
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [replyToId]);
 
   // Fetch sender identities on mount
   useEffect(() => {
@@ -55,6 +84,9 @@ export default function ComposePage() {
         body: JSON.stringify({
           sender,
           recipient,
+          cc: cc || undefined,
+          bcc: bcc || undefined,
+          inReplyTo: inReplyTo || undefined,
           subject,
           message,
         }),
@@ -72,6 +104,9 @@ export default function ComposePage() {
 
       // Clear form
       setRecipient('');
+      setCc('');
+      setBcc('');
+      setInReplyTo('');
       setSubject('');
       setMessage('');
 
@@ -169,13 +204,53 @@ export default function ComposePage() {
             </label>
             <input
               id="recipient"
-              type="email"
+              type="text"
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
-              placeholder="recipient@example.com"
+              placeholder="recipient@example.com, another@example.com"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 bg-white"
             />
           </div>
+
+          {/* Cc / Bcc */}
+          {showCcBcc ? (
+            <>
+              <div>
+                <label htmlFor="cc" className="block text-sm font-medium text-gray-700 mb-2">
+                  Cc
+                </label>
+                <input
+                  id="cc"
+                  type="text"
+                  value={cc}
+                  onChange={(e) => setCc(e.target.value)}
+                  placeholder="Separate multiple addresses with commas"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 bg-white"
+                />
+              </div>
+              <div>
+                <label htmlFor="bcc" className="block text-sm font-medium text-gray-700 mb-2">
+                  Bcc
+                </label>
+                <input
+                  id="bcc"
+                  type="text"
+                  value={bcc}
+                  onChange={(e) => setBcc(e.target.value)}
+                  placeholder="Hidden recipients, separated by commas"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 bg-white"
+                />
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowCcBcc(true)}
+              className="text-sm text-blue-600 hover:text-blue-700 -mt-2"
+            >
+              Add Cc / Bcc
+            </button>
+          )}
 
           {/* Subject */}
           <div>
@@ -233,5 +308,13 @@ export default function ComposePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ComposePage() {
+  return (
+    <Suspense fallback={null}>
+      <ComposeForm />
+    </Suspense>
   );
 }
