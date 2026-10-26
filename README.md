@@ -79,7 +79,8 @@ Perfect for solo founders, indie hackers, and small teams who want branded email
 - Passwords hashed with bcrypt
 - Inbound webhooks verified with Resend’s signing secret
 - Strict per-user data isolation
-- Rate limiting on sending (10 emails / minute per user)
+- Received HTML email is rendered in a sandboxed iframe (no scripts, strict CSP), never injected into the dashboard page
+- Rate limiting on sending (10 emails / minute per user, enforced in Postgres so it holds on serverless)
 
 ---
 

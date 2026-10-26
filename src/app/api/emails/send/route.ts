@@ -5,27 +5,19 @@ import { decrypt, validateEncryptionSecret } from '@/lib/encryption';
 import { sendEmail, formatEmailHtml } from '@/lib/resend';
 import { z } from 'zod';
 
-// Simple rate limiting using in-memory map (for MVP)
-// In production, this should use Redis or a similar distributed system
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10; // 10 emails per minute
 
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const userLimit = rateLimitMap.get(userId);
-
-  if (!userLimit || now > userLimit.resetTime) {
-    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-
-  if (userLimit.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return false;
-  }
-
-  userLimit.count++;
-  return true;
+// Counts the user's recent emails in Postgres so the limit holds across serverless
+// instances (an in-memory counter resets on every cold start and is not shared).
+async function isRateLimited(userId: string): Promise<boolean> {
+  const recent = await prisma.email.count({
+    where: {
+      userId,
+      createdAt: { gte: new Date(Date.now() - RATE_LIMIT_WINDOW_MS) },
+    },
+  });
+  return recent >= RATE_LIMIT_MAX_REQUESTS;
 }
 
 const sendEmailSchema = z.object({
@@ -48,7 +40,7 @@ export async function POST(request: Request) {
     }
 
     // Check rate limit
-    if (!checkRateLimit(session.user.id)) {
+    if (await isRateLimited(session.user.id)) {
       return NextResponse.json(
         { error: 'Rate limit exceeded. Please wait before sending more emails.' },
         { status: 429 }

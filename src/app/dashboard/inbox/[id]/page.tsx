@@ -4,6 +4,14 @@ import { LocalDateTime } from '@/components/LocalDateTime';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 
+// Email HTML is untrusted input from the sender. Render it in a sandboxed iframe:
+// no scripts, no same-origin access to the dashboard, and a strict CSP as a second layer.
+function buildSandboxedDocument(html: string): string {
+  const csp =
+    "default-src 'none'; img-src https: data:; style-src 'unsafe-inline'; font-src https: data:";
+  return `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${csp}"><base target="_blank"><style>body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#111827;word-wrap:break-word}img{max-width:100%;height:auto}</style></head><body>${html}</body></html>`;
+}
+
 export default async function EmailViewPage({
   params,
 }: {
@@ -87,9 +95,12 @@ export default async function EmailViewPage({
 
         <div className="px-6 py-6">
           {email.htmlBody ? (
-            <div
-              className="text-gray-900 text-sm leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: email.htmlBody }}
+            <iframe
+              title="Email content"
+              sandbox="allow-popups allow-popups-to-escape-sandbox"
+              referrerPolicy="no-referrer"
+              srcDoc={buildSandboxedDocument(email.htmlBody)}
+              className="w-full h-[70vh] border-0"
             />
           ) : email.textBody ? (
             <pre className="whitespace-pre-wrap font-sans text-gray-900 text-sm leading-relaxed">
