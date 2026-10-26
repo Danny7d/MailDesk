@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://inbound.tably.site"><strong>Live Demo</strong></a> &nbsp;•&nbsp;
+  <a href="https://maildesk-inbound.vercel.app"><strong>Live Demo</strong></a> &nbsp;•&nbsp;
   <a href="#features">Features</a> &nbsp;•&nbsp;
   <a href="#getting-started">Getting Started</a> &nbsp;•&nbsp;
   <a href="#roadmap">Roadmap</a>
@@ -100,7 +100,7 @@ Perfect for solo founders, indie hackers, and small teams who want branded email
 
 ## Live Demo
 
-→ **[https://inbound.tably.site](https://inbound.tably.site)**
+→ **[https://maildesk-inbound.vercel.app](https://maildesk-inbound.vercel.app)**
 
 Sign up, connect a Resend API key, and start sending/receiving immediately.
 
