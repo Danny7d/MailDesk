@@ -2,24 +2,10 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { decrypt, validateEncryptionSecret } from '@/lib/encryption';
 import { getSentEmailContent } from '@/lib/resend';
+import { htmlToText } from '@/lib/html-text';
 import { LocalDateTime } from '@/components/LocalDateTime';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-
-function htmlToText(html: string): string {
-  return html
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, '\n\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
 
 export default async function SentEmailViewPage({
   params,
@@ -91,6 +77,18 @@ export default async function SentEmailViewPage({
               <span className="text-gray-500 w-16 flex-shrink-0">To:</span>
               <span className="text-gray-900">{email.recipient}</span>
             </div>
+            {email.cc && (
+              <div className="flex">
+                <span className="text-gray-500 w-16 flex-shrink-0">Cc:</span>
+                <span className="text-gray-900">{email.cc}</span>
+              </div>
+            )}
+            {email.bcc && (
+              <div className="flex">
+                <span className="text-gray-500 w-16 flex-shrink-0">Bcc:</span>
+                <span className="text-gray-900">{email.bcc}</span>
+              </div>
+            )}
             <div className="flex">
               <span className="text-gray-500 w-16 flex-shrink-0">Date:</span>
               <span className="text-gray-900">

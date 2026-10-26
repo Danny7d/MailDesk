@@ -180,13 +180,20 @@ export function formatEmailHtml(message: string): string {
 /**
  * Sends an email using the Resend API
  */
+export interface SendEmailOptions {
+  cc?: string[];
+  bcc?: string[];
+  headers?: Record<string, string>;
+}
+
 export async function sendEmail(
   apiKey: string,
   from: string,
   to: string | string[],
   subject: string,
   html: string,
-  text?: string
+  text?: string,
+  options: SendEmailOptions = {}
 ): Promise<SendEmailResult> {
   try {
     const resend = new Resend(apiKey);
@@ -199,6 +206,9 @@ export async function sendEmail(
       subject,
       html: formattedHtml,
       text: plainText,
+      ...(options.cc?.length ? { cc: options.cc } : {}),
+      ...(options.bcc?.length ? { bcc: options.bcc } : {}),
+      ...(options.headers ? { headers: options.headers } : {}),
     });
 
     if (error) {

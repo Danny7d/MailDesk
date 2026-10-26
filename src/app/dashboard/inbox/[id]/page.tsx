@@ -62,9 +62,17 @@ export default async function EmailViewPage({
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">
-            {email.subject || '(No subject)'}
-          </h1>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {email.subject || '(No subject)'}
+            </h1>
+            <Link
+              href={`/dashboard/compose?replyTo=${email.id}`}
+              className="flex-shrink-0 bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium"
+            >
+              Reply
+            </Link>
+          </div>
 
           <div className="space-y-2 text-sm">
             <div className="flex">

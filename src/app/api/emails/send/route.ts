@@ -3,6 +3,7 @@ import { auth } from '@/auth';
 import { prisma } from '@/lib/db';
 import { decrypt, validateEncryptionSecret } from '@/lib/encryption';
 import { sendEmail, formatEmailHtml } from '@/lib/resend';
+import { parseAddressList, MAX_RECIPIENTS } from '@/lib/addresses';
 import { z } from 'zod';
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
@@ -22,7 +23,15 @@ async function isRateLimited(userId: string): Promise<boolean> {
 
 const sendEmailSchema = z.object({
   sender: z.string().min(1, 'Sender is required'),
-  recipient: z.string().email('Invalid recipient email'),
+  // Comma-separated address lists
+  recipient: z.string().min(1, 'At least one recipient is required').max(5000),
+  cc: z.string().max(5000).optional(),
+  bcc: z.string().max(5000).optional(),
+  // Message-ID of the email being replied to; strict format so it can't inject headers
+  inReplyTo: z
+    .string()
+    .regex(/^<[^<>\s]{1,300}>$/, 'Invalid In-Reply-To')
+    .optional(),
   subject: z.string().min(1, 'Subject is required'),
   message: z.string().min(1, 'Message is required'),
 });
@@ -49,7 +58,34 @@ export async function POST(request: Request) {
 
     stage = 'validate_request';
     const body = await request.json();
-    const { sender, recipient, subject, message } = sendEmailSchema.parse(body);
+    const { sender, recipient, cc: ccInput, bcc: bccInput, inReplyTo, subject, message } =
+      sendEmailSchema.parse(body);
+
+    const toList = parseAddressList(recipient);
+    const ccList = parseAddressList(ccInput);
+    const bccList = parseAddressList(bccInput);
+    const invalid = [...toList.invalid, ...ccList.invalid, ...bccList.invalid];
+    if (invalid.length > 0) {
+      return NextResponse.json(
+        { error: `Invalid email address: ${invalid.join(', ')}` },
+        { status: 400 }
+      );
+    }
+    if (toList.addresses.length === 0) {
+      return NextResponse.json({ error: 'At least one recipient is required' }, { status: 400 });
+    }
+    // An address appears once across To, Cc and Bcc (To wins, then Cc)
+    const to = toList.addresses;
+    const seenAddresses = new Set(to.map((a) => a.toLowerCase()));
+    const cc = ccList.addresses.filter((a) => !seenAddresses.has(a.toLowerCase()));
+    cc.forEach((a) => seenAddresses.add(a.toLowerCase()));
+    const bcc = bccList.addresses.filter((a) => !seenAddresses.has(a.toLowerCase()));
+    if (to.length + cc.length + bcc.length > MAX_RECIPIENTS) {
+      return NextResponse.json(
+        { error: `Too many recipients (maximum ${MAX_RECIPIENTS})` },
+        { status: 400 }
+      );
+    }
 
     const senderDomain = sender.slice(sender.lastIndexOf('@') + 1).toLowerCase();
     stage = 'load_provider_key';
@@ -93,7 +129,11 @@ export async function POST(request: Request) {
 
     // Send the email with preserved spacing and formatting
     stage = 'send_with_resend';
-    const result = await sendEmail(apiKey, sender, recipient, subject, message, message);
+    const result = await sendEmail(apiKey, sender, to, subject, message, message, {
+      cc,
+      bcc,
+      headers: inReplyTo ? { 'In-Reply-To': inReplyTo, References: inReplyTo } : undefined,
+    });
 
     if (!result.success) {
       // Log the error without exposing sensitive information
@@ -106,7 +146,9 @@ export async function POST(request: Request) {
           userId: session.user.id,
           provider: 'resend',
           sender,
-          recipient,
+          recipient: to.join(', '),
+          cc: cc.length ? cc.join(', ') : null,
+          bcc: bcc.length ? bcc.join(', ') : null,
           subject,
           body: message,
           status: 'failed',
@@ -130,7 +172,9 @@ export async function POST(request: Request) {
         userId: session.user.id,
         provider: 'resend',
         sender,
-        recipient,
+        recipient: to.join(', '),
+        cc: cc.length ? cc.join(', ') : null,
+        bcc: bcc.length ? bcc.join(', ') : null,
         subject,
         body: message,
         messageId: result.messageId,
@@ -138,53 +182,50 @@ export async function POST(request: Request) {
       },
     });
 
-    // If recipient is a registered user (e.g. user sending to their logged-in email or another user),
-    // deliver directly to their incoming inbox
+    // Deliver directly to any registered MailDesk users among the recipients.
+    // Bcc recipients get a copy, but the Bcc list is never stored on the delivered copy.
     try {
-      const normalizedRecipient = recipient.toLowerCase().trim();
-      const recipientUser =
-        (await prisma.user.findUnique({
-          where: { email: normalizedRecipient },
-        })) ||
-        (
-          await prisma.emailAddress.findUnique({
-            where: { email: normalizedRecipient },
-            include: { user: true },
-          })
-        )?.user;
+      const everyone = [...to, ...cc, ...bcc].map((a) => a.toLowerCase().trim());
+      const deliveredTo = new Set<string>();
 
-      if (recipientUser) {
-        const inboundEmailId = result.messageId
-          ? `inbound_${result.messageId}`
-          : `inbound_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+      for (const address of new Set(everyone)) {
+        const recipientUser =
+          (await prisma.user.findUnique({ where: { email: address } })) ||
+          (
+            await prisma.emailAddress.findUnique({
+              where: { email: address },
+              include: { user: true },
+            })
+          )?.user;
 
-        const existingIncoming = await prisma.incomingEmail.findFirst({
-          where: {
-            OR: [
-              { emailId: inboundEmailId },
-              ...(result.messageId ? [{ messageId: result.messageId }] : []),
-            ],
+        if (!recipientUser || deliveredTo.has(recipientUser.id)) continue;
+        deliveredTo.add(recipientUser.id);
+
+        const base =
+          result.messageId || `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const inboundEmailId = `inbound_${base}_${recipientUser.id}`;
+
+        const existingIncoming = await prisma.incomingEmail.findUnique({
+          where: { emailId: inboundEmailId },
+        });
+        if (existingIncoming) continue;
+
+        await prisma.incomingEmail.create({
+          data: {
+            userId: recipientUser.id,
+            emailId: inboundEmailId,
+            messageId: result.messageId || null,
+            from: sender,
+            subject,
+            to,
+            cc,
+            bcc: [],
+            textBody: message,
+            htmlBody: formatEmailHtml(message),
+            provider: 'resend',
+            receivedAt: new Date(),
           },
         });
-
-        if (!existingIncoming) {
-          await prisma.incomingEmail.create({
-            data: {
-              userId: recipientUser.id,
-              emailId: inboundEmailId,
-              messageId: result.messageId || null,
-              from: sender,
-              subject,
-              to: [recipient],
-              cc: [],
-              bcc: [],
-              textBody: message,
-              htmlBody: formatEmailHtml(message),
-              provider: 'resend',
-              receivedAt: new Date(),
-            },
-          });
-        }
       }
     } catch (deliverError) {
       console.error('Failed to deliver to local incoming inbox:', deliverError);

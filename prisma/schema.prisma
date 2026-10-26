@@ -53,7 +53,9 @@ model Email {
   userId       String
   provider     String   // "resend", "sendgrid", etc.
   sender       String
-  recipient    String
+  recipient    String   // To addresses, comma-separated
+  cc           String?  // Cc addresses, comma-separated
+  bcc          String?  // Bcc addresses, comma-separated
   subject      String
   body         String?  @db.Text // Plain-text body as composed (null for emails sent before this was stored)
   messageId    String?  // Provider's message ID (e.g., Resend message ID)
