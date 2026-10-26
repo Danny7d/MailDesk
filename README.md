@@ -28,6 +28,18 @@
 
 ---
 
+## What is it?
+
+MailDesk is a web app that gives your [Resend](https://resend.com) account a normal email interface. Resend is great for sending transactional email from code, but it has no inbox and no compose screen. MailDesk adds both:
+
+1. **Connect once** — paste your Resend API key. MailDesk finds your domains and registers an inbound webhook in your Resend account automatically.
+2. **Send** — pick a domain and sender, write the message, send. Everything is kept in your Sent history.
+3. **Receive** — mail to any address on your domain lands in an inbox with read/unread state.
+
+Use it if you run a small project or business on Resend and want branded email (`you@yourdomain.com`) without paying per seat for a full mail suite or writing API calls by hand.
+
+---
+
 ## Why MailDesk?
 
 Most developers either write custom code against the Resend API every time, or end up using heavy tools that are overkill for simple sending + receiving.
@@ -56,10 +68,10 @@ Perfect for solo founders, indie hackers, and small teams who want branded email
 
 ### Core Experience
 - **Connect your Resend account** — API key stored encrypted (AES-256-GCM), never sent to the browser
-- **Per-domain keys** — assign different keys to different sending domains or keep one account-wide key
+- **All your domains, one key** — every verified domain in your Resend account shows up automatically in the composer
 - **Clean composer** — select verified domain + sender, write your email, hit send
 - **Inbox** — receive email at generated inbound addresses via Resend webhooks (with read/unread state)
-- **Sent history** — track delivery status of every email you send
+- **Sent history** — every email you send is saved with its full content; click a row to read it
 - **User accounts** — email + password auth, fully multi-tenant
 
 ### Security
